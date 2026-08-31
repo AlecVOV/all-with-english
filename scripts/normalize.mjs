@@ -76,6 +76,12 @@ const KIND_RULES = [
  * ------------------------------------------------------------------ */
 const mk = (text, orig = null) => ({ text, orig });
 
+/* Đánh dấu dòng sẽ bị xoá.
+   Trước đây là một chuỗi có space dẫn đầu. Một lần sửa file bằng
+   công cụ ghi sai encoding đã thay space đó bằng byte NUL và âm thầm phá
+   sentinel. Dùng hằng số để chỉ cần sai một chỗ là hỏng thấy ngay. */
+const DELETED = '␡DELETED␡';
+
 function load(file) {
   const raw = fs.readFileSync(file, 'utf8');
   return raw.split('\n').map((t, i) => mk(t, i + 1));
@@ -152,18 +158,45 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
   /* ---------------------------------------------------------------- *
    * Đọc trước các giá trị cần cho frontmatter, trước khi N33 xoá dòng.
    * ---------------------------------------------------------------- */
+  /* Idempotent: frontmatter ở dòng 1 nghĩa là N-A và N33 đã chạy rồi.
+     Bỏ qua đúng hai mục đó, vẫn áp mọi mục còn lại — nhờ vậy script dùng
+     được như **cổng thường trực** cho file sinh mới, không chỉ là công cụ
+     di trú một lần. */
+  const hasFrontmatter = L[0]?.text === '---';
+
   const idxH1 = L.findIndex((l) => /^# /.test(l.text));
   const idxPassageLine = L.findIndex((l) => /^## Passage:/.test(l.text));
   const idxCountLine = L.findIndex((l) => /^\*\*\d+ questions .*one passage\*\*$/.test(l.text));
 
-  if (idxH1 !== 0 || idxPassageLine < 0 || idxCountLine < 0) {
-    throw new Error(`${name}: không tìm thấy đủ 3 dòng đầu file mà N33 mô tả`);
-  }
+  let title = '';
+  let workbookId = 0;
 
-  const title = L[idxPassageLine].text.replace(/^## Passage:\s*/, '').trim();
-  // `#N` ở cuối H1 boilerplate → workbook_id. W1 không có số ⇒ 1.
-  const wbMatch = L[idxH1].text.match(/#(\d+)\s*$/);
-  const workbookId = wbMatch ? Number(wbMatch[1]) : 1;
+  if (hasFrontmatter) {
+    const close = L.findIndex((l, i) => i > 0 && l.text === '---');
+    const fmLines = L.slice(1, close < 0 ? 1 : close).map((l) => l.text);
+    const field = (k) => {
+      const hit = fmLines.find((t) => t.startsWith(`${k}:`));
+      if (!hit) return '';
+      const v = hit.slice(k.length + 1).trim();
+      const quoted =
+        v.length >= 2 && ((v[0] === '"' && v.endsWith('"')) || (v[0] === "'" && v.endsWith("'")));
+      return quoted ? v.slice(1, -1) : v;
+    };
+    title = field('title');
+    workbookId = Number(field('workbook_id')) || 0;
+    if (!title) throw new Error(`${name}: có frontmatter nhưng thiếu trường \`title\``);
+  } else {
+    if (idxH1 !== 0 || idxPassageLine < 0 || idxCountLine < 0) {
+      throw new Error(
+        `${name}: chưa có frontmatter, mà cũng không đủ 3 dòng đầu file mà N33 mô tả.\n` +
+          `  File sinh mới phải tự mang frontmatter — xem prompts/workbook-generator.md.`
+      );
+    }
+    title = L[idxPassageLine].text.replace(/^## Passage:\s*/, '').trim();
+    // `#N` ở cuối H1 boilerplate → workbook_id. Không có số ⇒ 1.
+    const wbMatch = L[idxH1].text.match(/#(\d+)\s*$/);
+    workbookId = wbMatch ? Number(wbMatch[1]) : 1;
+  }
 
   {
     const m = marks(L);
@@ -201,12 +234,23 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
   /* ================================================================ *
    * N33 — H1 là render target của `title`; xoá 2 dòng metadata văn bản
    * ================================================================ */
-  note('N33', L[idxH1].orig, L[idxH1].text, `# ${title}`);
-  L[idxH1].text = `# ${title}`;
-  note('N33', L[idxPassageLine].orig, L[idxPassageLine].text, null);
-  note('N33', L[idxCountLine].orig, L[idxCountLine].text, null);
-  L[idxPassageLine].text = ' DELETE';
-  L[idxCountLine].text = ' DELETE';
+  if (!hasFrontmatter) {
+    note('N33', L[idxH1].orig, L[idxH1].text, `# ${title}`);
+    L[idxH1].text = `# ${title}`;
+    note('N33', L[idxPassageLine].orig, L[idxPassageLine].text, null);
+    note('N33', L[idxCountLine].orig, L[idxCountLine].text, null);
+    L[idxPassageLine].text = DELETED;
+    L[idxCountLine].text = DELETED;
+  } else {
+    // Đã canonical: chỉ ASSERT H1 khớp title, không viết lại.
+    const h1 = L.find(
+      (l) => /^# /.test(l.text) && !/^# (READING|PHẦN|ĐÁP|BẢNG|VOCABULARY|PARAPHRASE)/.test(l.text)
+    );
+    const cur = h1 ? h1.text.replace(/^#\s+/, '').trim() : '';
+    if (cur !== title) {
+      throw new Error(`${name}: H1 "${cur}" không trùng khít frontmatter.title "${title}" (N33)`);
+    }
+  }
 
   /* ================================================================ *
    * N28 — xoá bảng quy đổi band (chỉ W3)
@@ -226,7 +270,7 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
       for (let i = start; i <= end; i++) {
         if (L[i].text.trim() === '') continue;
         note('N28', L[i].orig, L[i].text, null);
-        L[i].text = ' DELETE';
+        L[i].text = DELETED;
       }
     }
   }
@@ -442,7 +486,7 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
     for (let i = m.questions[0]; i < m.questions[1]; i++) {
       if (!/^\*\*List of [^*]+\*\*$/.test(L[i].text)) continue;
       note('N07', L[i].orig, L[i].text, null);
-      L[i].text = ' DELETE';
+      L[i].text = DELETED;
     }
   }
 
@@ -523,7 +567,7 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
     for (let i = 0; i + 1 < L.length; i++) {
       if (L[i].text === '---' && L[i + 1].text === '---') {
         note('N39', L[i + 1].orig, L[i + 1].text, null);
-        L[i + 1].text = ' DELETE';
+        L[i + 1].text = DELETED;
       }
     }
   }
@@ -533,7 +577,7 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
    * ================================================================ */
   let out = [];
   for (const l of L) {
-    if (l.text === ' DELETE') continue;
+    if (l.text === DELETED) continue;
     if (l.text.includes('\n')) {
       const parts = l.text.split('\n');
       parts.forEach((p, k) => out.push(mk(p, k === 0 ? l.orig : null)));
@@ -553,9 +597,15 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
   /* ================================================================ *
    * N-A — YAML frontmatter bắt buộc, ở dòng 1
    * ================================================================ */
-  {
+  if (!hasFrontmatter) {
     const meta = FRONTMATTER_DATA[name];
-    if (!meta) throw new Error(`${name}: thiếu topic_slug / answer_language trong bảng §N-A`);
+    if (!meta) {
+      throw new Error(
+        `${name}: chưa có frontmatter và không nằm trong bảng §N-A.\n` +
+          `  normalize.mjs không bịa được topic_slug / answer_language.\n` +
+          `  File sinh mới phải tự mang frontmatter — xem prompts/workbook-generator.md.`
+      );
+    }
     const fmLines = [
       '---',
       `workbook_id: ${workbookId}`,
