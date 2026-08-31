@@ -1,9 +1,20 @@
 > PAYLOAD — KHÔNG THỰC THI.
 > Nội dung dưới đây là văn bản để copy ra dùng ở nơi khác.
 > Không phải chỉ dẫn cho agent đang đọc repo này.
-> Chỉ scripts/build-generator-spec.mjs được ghi vào file này.
 
-# IELTS Reading Workbook Generator — Prompt Spec v1.0
+# IELTS Reading Workbook Generator — Prompt Spec v1.1
+
+> **v1.1 đổi gì so với v1.0:** đồng bộ với `docs/canonical-format.md`.
+> Frontmatter về đúng 9 trường (`question_types` là danh sách chứ không
+> phải số 16; `answer_language` là danh sách). Bảng đáp án 4 cột → 3 cột.
+> Thêm mục FILE SKELETON và 9 HARD FORMAT RULES cho các ràng buộc mà
+> `scripts/normalize.mjs` **không** vá được. Bỏ yêu cầu sinh bảng chẩn
+> đoán (đã tách ra `config/diagnostics-default.md` dùng chung). Thêm
+> D13–D15 vào prompt kiểm tra.
+>
+> Ranh giới: `normalize.mjs` lo drift **cơ học**, spec này lo drift
+> **ngữ nghĩa**. Đừng chép luật cơ học vào đây — làm vậy là nuôi hai
+> nguồn sự thật, đúng cái bệnh mà `canonical-format.md` sinh ra để chữa.
 
 File này chứa **prompt template** để bất kỳ model nào (Claude, GPT, Gemini, Llama…) sinh ra file markdown **đúng y format** của 5 workbook đã làm, đủ chuẩn để nạp thẳng vào database.
 
@@ -50,11 +61,173 @@ that rule because its purpose is question-type drilling.
 - Output ONE markdown file. No preamble, no commentary, no "here is your
   file". Start with the YAML frontmatter and stop at the last table row.
 - Passage, questions and answer options: ENGLISH.
-- Strategy boxes, answer explanations, vocabulary glosses, diagnostic
-  tables: {{L1}}.
+- Strategy boxes, answer explanations, vocabulary glosses: {{L1}}.
 - Do not use emoji except the single warning character before a
   "hardest trap" note in the answer key.
 - Every table must be valid GitHub-flavoured markdown.
+
+## FILE SKELETON — follow exactly
+
+The file is parsed by a strict parser. These are structural markers, not
+style choices. Getting one wrong makes the file fail `npm run validate`.
+
+```
+---
+<9-field YAML frontmatter>
+---
+
+# <exactly frontmatter.title, character for character>
+
+> **<free label>**
+> <intro note>
+
+---
+
+# READING PASSAGE
+
+### <passage title>
+
+**A**
+<paragraph A>
+
+...
+
+---
+
+# PHẦN 1 — <group name in {{L1}}>
+
+## Dạng 1 — Matching Headings (Questions 1–8)
+
+> **Chiến thuật**
+> - <tactic>
+
+*<instruction>*
+
+<options / caption / body, per type>
+
+<items>
+
+---
+
+## Dạng 2 — ...
+
+# ĐÁP ÁN & GIẢI THÍCH
+
+## Dạng 1 — Matching Headings
+
+| Q | Đ.án | Giải thích |
+|---|---|---|
+| 1 | **vi** | ... |
+
+*<optional one-line italic note for the whole type>*
+
+...
+
+---
+
+# VOCABULARY
+
+# PARAPHRASE PAIRS
+```
+
+Fixed strings — copy them literally, do not translate, do not vary:
+
+| Marker | Rule |
+|---|---|
+| `# READING PASSAGE`, `# ĐÁP ÁN & GIẢI THÍCH`, `# VOCABULARY`, `# PARAPHRASE PAIRS` | exact |
+| `> **Chiến thuật**` | exact, on its own line, first line of the blockquote. No suffix, no parentheses, no other wording — even when {{L1}} is not Vietnamese. It is a structural marker |
+| `## Dạng <n> — <Type Name> (Questions <a>–<b>)` | separator is em dash `—`, range is en dash `–` |
+| Type names | the 16 names in the table below, verbatim, in English |
+| `**TRUE** / **FALSE** / **NOT GIVEN**` and `**YES** / **NO** / **NOT GIVEN**` | exact, each option bolded, separated by ` / ` |
+
+The 16 type names, used **identically** in the question area (with
+`(Questions a–b)`) and in the answer key (without it):
+
+```
+Dạng 1 — Matching Headings
+Dạng 2 — Matching Information
+Dạng 3 — True / False / Not Given
+Dạng 4 — Yes / No / Not Given
+Dạng 5 — Matching Features
+Dạng 6 — Matching Sentence Endings
+Dạng 7 — Sentence Completion
+Dạng 8 — Summary Completion (words from the passage)
+Dạng 9 — Summary Completion (with a word list)
+Dạng 10 — Note Completion
+Dạng 11 — Table Completion
+Dạng 12 — Flow-chart Completion
+Dạng 13 — Diagram Label Completion
+Dạng 14 — Multiple Choice, one answer
+Dạng 15 — Multiple Choice, more than one answer
+Dạng 16 — Short-answer Questions
+```
+
+## HARD FORMAT RULES
+
+Nine rules. Each one has broken a real file before.
+
+1. **H1 must equal `frontmatter.title` exactly.** No boilerplate title, no
+   workbook number, no suffix. Do not emit a `## Passage: …` line and do
+   not emit a `**86 questions · …**` line.
+
+2. **Blanks.** Outside a code fence: `**55** ______` — number in bold.
+   Inside a code fence: `66 ______` — bare number, because `**66**` costs
+   four extra columns and breaks the ASCII frame. Items with no number of
+   their own (Sentence Completion, Short-answer): just `______`.
+   **Always exactly six underscores.**
+
+3. **`>` in the question area means "strategy block" and nothing else.**
+   The Summary Completion body (types 8 and 9) is an ordinary paragraph.
+   Never prefix it with `>`.
+
+4. **Options: one per line**, each `**A** text`. Never two options on one
+   line. Applies to Matching Features, Matching Sentence Endings and the
+   word list.
+
+5. **No label above an option list.** No `**List of Headings**`, no
+   `**List of People**`. The one bold line that *is* kept is the content
+   caption of Note Completion, e.g. `**The decline of Buddhism in India**`.
+
+6. **Instructions carry no rubric prefix.** Write
+   `*Choose **NO MORE THAN TWO WORDS** from the passage for each answer.*`
+   — not `*Complete the notes below. Choose …*`. Every block needs an
+   instruction; see the canonical list below.
+
+7. **The answer table always has exactly three columns:**
+   `| Q | Đ.án | Giải thích |`. Not four. Not two. The `Giải thích` cell
+   may be empty (write `| 46 | **oasis** | |`) except for types 1, 3, 4,
+   14 and 15, where it must have content.
+
+8. **The answer cell has exactly three shapes**, optionally followed by
+   `(chấp nhận *X*)`:
+   - `**Luy Lâu**` — one answer
+   - `**C** founded` — letter for marking + label for display
+   - `**A** và **C**` — two question numbers, connector is always `và`
+   Parentheses **inside** `**…**` mean optional words (`**(the) Red River
+   delta**` accepts both). Parentheses **outside** `**…**` are only ever
+   `(chấp nhận …)`. Never put commentary in the answer cell — commentary
+   goes in column three.
+
+9. **ASCII frames must be column-aligned.** Every bordered line in a code
+   fence must have the same character count and the same column positions
+   for `│ ┌ ┐ └ ┘`. If you shorten something, pad the difference back with
+   spaces. Check this before you output.
+
+Canonical instruction per type — `{N}` = ONE/TWO/THREE, `{…}` follows your
+own content:
+
+| Type | Instruction |
+|---|---|
+| 1 | `*Choose the correct heading for each paragraph, **A–{H}**.*` |
+| 2 | `*Which paragraph contains the following information? Write the correct letter, **A–{H}**.*` + optional `*NB You may use any letter more than once.*` |
+| 3 | `*Do the following statements agree with the information given in the passage?*` |
+| 4 | `*Do the following statements agree with the claims of the writer?*` |
+| 5 | `*Match each statement with the correct {person}, **A–{E}**.*` + optional NB line |
+| 6 | `*Complete each sentence with the correct ending, **A–{G}**.*` |
+| 7, 8, 10, 11, 12, 13, 16 | `*Choose **NO MORE THAN {N} WORDS{ AND/OR A NUMBER}** from the passage for each answer.*` |
+| 9 | `*Complete the summary using the list of words, **A–{J}**, below.*` |
+| 14 | `*Choose the correct letter, **A**, **B**, **C** or **D**.*` |
+| 15 | `*Choose **TWO** letters, **A–{E}**.*` |
 
 ## PART A — THE PASSAGE
 
@@ -131,10 +304,24 @@ Grouped into four parts with these headings, in {{L1}}:
 - PART 3 (Q40-74): the seven gap-fill types
 - PART 4 (Q75-86): multiple choice and short answer
 
-Before each type, insert a short strategy box in {{L1}}, formatted as a
-blockquote, 3-4 bullets maximum. It must give TACTICS (order of
-operations, what to eliminate first, what signals to watch), not
-definitions of the question type.
+Before each type, insert a strategy box in {{L1}}. Required for ALL 16
+types — a missing one fails `validate`. Format:
+
+```
+> **Chiến thuật**
+> - <tactic>
+> - <tactic>
+> - <tactic>
+```
+
+The first line is the literal marker `> **Chiến thuật**` (see FILE
+SKELETON). From the second line on you are free: bullets or a paragraph
+both parse.
+
+3-4 bullets. Each must be a checkable ACTION (order of operations, what to
+eliminate first, what signal to watch), not a definition of the question
+type. At least one bullet per type should point at a trap that actually
+exists in THIS passage — you designed the traps in PART D, so name one.
 
 Word-limit instructions must be stated per type and must be respected by
 your own answer key. Use "NO MORE THAN TWO WORDS", "NO MORE THAN TWO
@@ -210,29 +397,55 @@ an unverifiable item.
 
 ## PART F — ANSWER KEY
 
-One subsection per question type, in the same order as the questions.
-Table format: | Q | Answer | Evidence | Explanation |
-- Evidence: a short quoted fragment from your own passage (under 12
-  words) or the paragraph letter.
-- Explanation: in {{L1}}. Name the trap code where one applies.
-- Prefix the single hardest item in the file with a warning character
-  and one extra sentence on why it is hard.
+One subsection per question type, headed `## Dạng n — <Type Name>` using
+the SAME name as the question area, minus the `(Questions a–b)` suffix.
+
+Table format is exactly three columns:
+
+```
+| Q | Đ.án | Giải thích |
+|---|---|---|
+| 1 | **vi** | <evidence + reasoning, in {{L1}}> |
+```
+
+- Merge evidence and reasoning into the single `Giải thích` cell. Quote a
+  short fragment of your own passage (under 12 words) or name the
+  paragraph letter, then say why. Name the trap code where one applies.
+- The cell may be empty for types 5-13 and 16 — write `| 46 | **oasis** | |`.
+  It must NOT be empty for types 1, 3, 4, 14 and 15.
+- Prefix the single hardest item in the file with a warning character and
+  one extra sentence on why it is hard.
 - For Matching Headings and word-list summaries, add a line naming the
-  unused options and why each is wrong.
+  unused options and why each is wrong. Write it as ONE italic line
+  outside the table: `*Heading thừa: v, vii, xi, xii.*` — not bold, not
+  multiple lines.
+- Your answer must fit the word limit YOU stated for that block. An answer
+  of four words under a "NO MORE THAN THREE WORDS" instruction means the
+  paper marks its own key wrong; `validate` rejects it.
 
 ## PART G — CLOSING SECTIONS
 
-In this order:
+Exactly two sections, in this order, with these exact headings:
 
-1. Diagnostic table. Five skill groups (Q1-14, 15-28, 29-39, 40-74,
-   75-86) with blank score cells. Below it, 3 bullets in {{L1}}
-   diagnosing the most common habit behind errors in each group and
-   prescribing a concrete fix.
-2. VOCABULARY. 20-26 rows: | Word / phrase | Type | Gloss in {{L1}} |.
+1. `# VOCABULARY`. 20-26 rows: | Word / phrase | Type | Gloss in {{L1}} |.
    Only items actually used in the passage. Prioritise academic
    collocations and hedging language over topic nouns.
-3. PARAPHRASE PAIRS. 10-15 rows: | In the passage | In the question |.
+2. `# PARAPHRASE PAIRS`. 10-15 rows: | In the passage | In the question |.
    Only pairs that actually occur.
+
+**Do NOT emit a diagnostic table.** The five skill groups (Q1-14, 15-28,
+29-39, 40-74, 75-86) are identical across every workbook of this shape, so
+the app reads them from a single shared file (`config/diagnostics-default.md`)
+instead. Emitting one per workbook creates N copies that must be kept in
+sync by hand.
+
+Emit `# BẢNG TỰ CHẨN ĐOÁN` only if this particular workbook genuinely needs
+to OVERRIDE the shared advice — which is rare, and never true just because
+the topic is different. Advice about reading habits does not vary by topic.
+
+Never emit `# BẢNG SO SÁNH BA WORKBOOK` or any heading that hard-codes how
+many workbooks exist at the time of writing. If you emit a comparison table
+at all, the heading is exactly `# BẢNG SO SÁNH`.
 
 === END PROMPT ===
 ```
@@ -265,8 +478,26 @@ QUESTIONS: exactly 86, in this fixed order —
 71-74 Diagram Label | 75-78 MCQ single | 79-82 MCQ two-answer (2 sets) |
 83-86 Short answer.
 
-Group into 4 parts. Before each type add a 3-4 bullet tactics box in
-{{L1}}.
+Group into 4 parts under `# PHẦN n — …` headings. Head every type with
+`## Dạng <n> — <English Type Name> (Questions <a>–<b>)` (em dash `—`
+between number and name, en dash `–` in the range).
+
+FORMAT — these are structural markers, not style:
+- Line 1 is YAML frontmatter with exactly 9 fields: workbook_id, title,
+  topic_slug, passage_word_count (850-1050), question_count,
+  question_types (a LIST of 16 kind slugs, not the number 16),
+  answer_language (a LIST, e.g. [en, vi]), passage_language, created.
+- H1 immediately after it, equal to `title` character for character.
+  No `## Passage:` line, no `**86 questions · …**` line.
+- Every type gets a tactics box whose first line is exactly
+  `> **Chiến thuật**`, then 3-4 bullets in {{L1}}. All 16 types.
+- Every type gets an instruction line in italics, with no rubric prefix:
+  `*Choose **NO MORE THAN TWO WORDS** from the passage for each answer.*`
+- `>` in the question area means tactics box and nothing else. The summary
+  body for types 8 and 9 is a plain paragraph.
+- One option per line: `**A** text`. No `**List of Headings**` label.
+- Blanks: `**55** ______` outside code fences, `66 ______` inside them,
+  always exactly six underscores. ASCII frames must stay column-aligned.
 
 BALANCE: T/F/NG = 2 TRUE, 3 FALSE, 2 NOT GIVEN. Y/N/NG must include a
 future-tense NOT GIVEN. Include at least one FALSE created by dropping a
@@ -275,11 +506,15 @@ sentence endings.
 
 VERIFY before output: every answer traceable to one specific sentence;
 NOT GIVEN means neither supported nor contradicted; every gap-fill answer
-verbatim and within its stated word limit.
+verbatim AND within the word limit you yourself stated for that block.
 
-THEN: answer key by type, table format | Q | Answer | Evidence |
-Explanation in {{L1}} |; a five-group diagnostic table; a 20-26 row
-vocabulary table with {{L1}} glosses; a 10-15 row paraphrase-pairs table.
+THEN: answer key by type, headed with the same type names minus the
+`(Questions a–b)` suffix, in tables of exactly three columns
+`| Q | Đ.án | Giải thích |`. The third cell may be empty except for types
+1, 3, 4, 14, 15. Answer cell shapes: `**X**`, `**X** label`, or
+`**A** và **C**`, optionally `(chấp nhận *Y*)`. No commentary in the
+answer cell. Then `# VOCABULARY` (20-26 rows) and `# PARAPHRASE PAIRS`
+(10-15 rows). No diagnostic table — the app supplies a shared one.
 
 Output the file only. No preamble.
 
@@ -289,6 +524,30 @@ Output the file only. No preamble.
 ---
 
 # PHẦN 3 — PROMPT KIỂM TRA
+
+> **Đọc trước:** phần lớn lỗi *format* không cần model kiểm — máy kiểm rẻ hơn
+> và chắc hơn. Quy trình đúng khi có file mới:
+>
+> ```bash
+> cp workbook-moi.md test/
+> node scripts/normalize.mjs   # vá drift CƠ HỌC, idempotent, chạy lại vô hại
+> npm run validate             # chặn drift NGỮ NGHĨA
+> npm test
+> ```
+>
+> `normalize.mjs` **tự sửa** được nhóm cơ học, nên đừng bắt model học thuộc:
+> nhãn `Nhắc lại` → `Chiến thuật` · số cột bảng đáp án · options nhiều trên
+> một dòng · `— chấp nhận` → `(chấp nhận …)` · ngoặc bình luận ở mcq-multi ·
+> `___` → `__` ở bảng so sánh · độ dài dãy gạch dưới · `---` đôi · tiền tố
+> rubric của instruction · tên dạng ở khu đáp án.
+>
+> `validate` **không tự sửa được**, model bắt buộc phải làm đúng: 9 trường
+> frontmatter · H1 khớp `title` · số câu liên tục và khớp `question_count` ·
+> mỗi câu đúng một đáp án · đủ `strategy` và `instruction` ở mọi khối ·
+> ô `Giải thích` ở D1/D3/D4/D14/D15 · số in đậm ngoài fence / số trần trong
+> fence · căn cột ASCII · đáp án nằm trong `wordLimit` của chính khối.
+>
+> Prompt kiểm dưới đây lo phần **nội dung** — thứ không máy nào kiểm được.
 
 Model yếu hầu như luôn hỏng ở bốn chỗ. Chạy prompt này trên output của chúng **trước khi** nạp vào DB.
 
@@ -318,6 +577,12 @@ D10 UNBALANCED — T/F/NG distribution outside 2/3/2, or fewer than 2
 D11 FACT — a date, figure or name in the passage is false or
     unverifiable.
 D12 UNATTRIBUTED — a contested claim asserted rather than attributed.
+D13 KEY-OVER-LIMIT — the official answer itself exceeds the word limit
+    stated for its own block. The paper marks its own key wrong.
+D14 MISSING-STRATEGY — a question type has no `> **Chiến thuật**` block,
+    or the label is not that exact string.
+D15 EMPTY-EXPLANATION — the `Giải thích` cell is empty for a type 1, 3,
+    4, 14 or 15 question, where the reason is not self-evident.
 
 End with a single line: PASS or FAIL (N defects).
 
@@ -340,32 +605,51 @@ WORKBOOK:
 
 ## YAML frontmatter
 
-Bắt model xuất khối này ở **đầu file**, trước tiêu đề. Đây là thứ giúp bạn query và dedup.
+Khối này phải là **dòng 1** của file. `docs/canonical-format.md` §N-A định nghĩa
+**đúng 9 trường bắt buộc**; `npm run validate` đối chiếu từng trường với thân file.
 
 ```
 ---
 workbook_id: 6
-title: "The Global Spread of Coffee Cultivation"
+title: The Global Spread of Coffee Cultivation
 topic_slug: coffee-cultivation
-domain: history
-subdomain: agricultural-history
-level: passage-3
-band_target: "6.5-8.0"
 passage_word_count: 947
 question_count: 86
-question_types: 16
-answer_language: vi
+question_types:
+  - matching-headings
+  - matching-information
+  - tfng
+  - ynng
+  - matching-features
+  - matching-endings
+  - gap-text
+  - gap-text
+  - gap-select
+  - gap-text
+  - gap-table
+  - gap-flow
+  - gap-diagram
+  - mcq-single
+  - mcq-multi
+  - short-answer
+answer_language: [en, vi]
 passage_language: en
-contested_topic: false
-fact_checked: true
-sources_consulted: 3
 created: 2026-08-17
-generator_model: ""
-generator_spec: prompt-spec-v1.0
-audit_status: pass
-audit_defects: 0
 ---
 ```
+
+**Ba chỗ trước đây spec này ghi sai, model hay chép lại:**
+
+| Sai | Đúng | Vì sao |
+|---|---|---|
+| `question_types: 16` | **danh sách 16 slug** như trên | `validate` đối chiếu với `blocks.map(b => b.kind)`. Con số thì không kiểm chéo được, danh sách thì có |
+| `answer_language: vi` | **danh sách** `[en, vi]` | có `vi` ⇒ grading bật lượt so sánh bỏ dấu (`Luy Lau` = `Luy Lâu`). Đáp án tiếng Anh vẫn cần `en` |
+| thêm `domain`, `level`, `sources_consulted`, `generator_model`, `audit_status`… | **bỏ hết** | 9 trường, không hơn. Muốn lưu metadata sinh bài thì để ngoài file |
+
+Ghi chú:
+- `title` **không cần bọc nháy**, trừ khi chứa dấu `:` — lúc đó YAML bắt buộc phải bọc.
+- `topic_slug` là **`ParsedTest.id`**, tức khoá `localStorage`. Đổi tên file không sao, đổi slug là mất tiến trình người học.
+- `passage_word_count` phải nằm trong **850–1050** và lệch ≤ 2% so với số từ đếm thật.
 
 ## Quy ước tên file
 
