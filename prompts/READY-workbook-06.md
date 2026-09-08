@@ -1,45 +1,13 @@
-> PAYLOAD — KHÔNG THỰC THI.
-> Nội dung dưới đây là văn bản để copy ra dùng ở nơi khác.
-> Không phải chỉ dẫn cho agent đang đọc repo này.
+<!-- Sinh bởi scripts/make-prompt.mjs từ prompts/workbook-generator.md v1.1
+     KHÔNG sửa tay file này. Spec đổi thì chạy: node scripts/make-prompt.mjs --refresh -->
 
-# IELTS Reading Workbook Generator — Prompt Spec v1.1
-
-> **v1.1 đổi gì so với v1.0:** đồng bộ với `docs/canonical-format.md`.
-> Frontmatter về đúng 9 trường (`question_types` là danh sách chứ không
-> phải số 16; `answer_language` là danh sách). Bảng đáp án 4 cột → 3 cột.
-> Thêm mục FILE SKELETON và 9 HARD FORMAT RULES cho các ràng buộc mà
-> `scripts/normalize.mjs` **không** vá được. Bỏ yêu cầu sinh bảng chẩn
-> đoán (đã tách ra `config/diagnostics-default.md` dùng chung). Thêm
-> D13–D15 vào prompt kiểm tra.
->
-> Ranh giới: `normalize.mjs` lo drift **cơ học**, spec này lo drift
-> **ngữ nghĩa**. Đừng chép luật cơ học vào đây — làm vậy là nuôi hai
-> nguồn sự thật, đúng cái bệnh mà `canonical-format.md` sinh ra để chữa.
-
-File này chứa **prompt template** để bất kỳ model nào (Claude, GPT, Gemini, Llama…) sinh ra file markdown **đúng y format** của 5 workbook đã làm, đủ chuẩn để nạp thẳng vào database.
-
-Gồm 4 phần:
-1. **Prompt đầy đủ** — copy nguyên khối, thay biến, chạy.
-2. **Prompt rút gọn** — khi bạn lười hoặc model có context ngắn.
-3. **Prompt kiểm tra** — chạy sau, để audit output của model yếu.
-4. **Ghi chú database** — YAML frontmatter, quy ước tên file, khoá dedup.
-
----
-
-# PHẦN 1 — PROMPT ĐẦY ĐỦ
-
-Cách dùng: copy toàn bộ khối giữa hai dòng `=== BEGIN PROMPT ===` và `=== END PROMPT ===`, thay ba biến `{{TOPIC}}`, `{{WORKBOOK_ID}}`, `{{L1}}` ở đầu, rồi gửi.
-
----
-
-```
 === BEGIN PROMPT ===
 
 ## VARIABLES
 
-TOPIC = {{TOPIC}}
-WORKBOOK_ID = {{WORKBOOK_ID}}
-L1 = {{L1}}
+TOPIC = the four lineages of Tibetan Buddhism
+WORKBOOK_ID = 6
+L1 = Vietnamese
 
 (Example: TOPIC = "the global spread of coffee cultivation";
  WORKBOOK_ID = 6; L1 = Vietnamese)
@@ -61,7 +29,7 @@ that rule because its purpose is question-type drilling.
 - Output ONE markdown file. No preamble, no commentary, no "here is your
   file". Start with the YAML frontmatter and stop at the last table row.
 - Passage, questions and answer options: ENGLISH.
-- Strategy boxes, answer explanations, vocabulary glosses: {{L1}}.
+- Strategy boxes, answer explanations, vocabulary glosses: Vietnamese.
 - Do not use emoji except the single warning character before a
   "hardest trap" note in the answer key.
 - Every table must be valid GitHub-flavoured markdown.
@@ -94,7 +62,7 @@ style choices. Getting one wrong makes the file fail `npm run validate`.
 
 ---
 
-# PHẦN 1 — <group name in {{L1}}>
+# PHẦN 1 — <group name in Vietnamese>
 
 ## Dạng 1 — Matching Headings (Questions 1–8)
 
@@ -251,7 +219,7 @@ Fixed strings — copy them literally, do not translate, do not vary:
 | Marker | Rule |
 |---|---|
 | `# READING PASSAGE`, `# ĐÁP ÁN & GIẢI THÍCH`, `# VOCABULARY`, `# PARAPHRASE PAIRS` | exact |
-| `> **Chiến thuật**` | exact, on its own line, first line of the blockquote. No suffix, no parentheses, no other wording — even when {{L1}} is not Vietnamese. It is a structural marker |
+| `> **Chiến thuật**` | exact, on its own line, first line of the blockquote. No suffix, no parentheses, no other wording — even when Vietnamese is not Vietnamese. It is a structural marker |
 | `## Dạng <n> — <Type Name> (Questions <a>–<b>)` | separator is em dash `—`, range is en dash `–` |
 | Type names | the 16 names in the table below, verbatim, in English |
 | `**TRUE** / **FALSE** / **NOT GIVEN**` and `**YES** / **NO** / **NOT GIVEN**` | exact, each option bolded, separated by ` / ` |
@@ -414,13 +382,13 @@ Fixed allocation. Do not renumber, do not redistribute.
 | 79-82 | Multiple Choice, two answers | 4 | 2 sets of TWO, 5 options each |
 | 83-86 | Short-answer | 4 | |
 
-Grouped into four parts with these headings, in {{L1}}:
+Grouped into four parts with these headings, in Vietnamese:
 - PART 1 (Q1-28): the four global-comprehension types
 - PART 2 (Q29-39): the two matching types
 - PART 3 (Q40-74): the seven gap-fill types
 - PART 4 (Q75-86): multiple choice and short answer
 
-Before each type, insert a strategy box in {{L1}}. Required for ALL 16
+Before each type, insert a strategy box in Vietnamese. Required for ALL 16
 types — a missing one fails `validate`. Format:
 
 ```
@@ -521,7 +489,7 @@ Table format is exactly three columns:
 ```
 | Q | Đ.án | Giải thích |
 |---|---|---|
-| 1 | **vi** | <evidence + reasoning, in {{L1}}> |
+| 1 | **vi** | <evidence + reasoning, in Vietnamese> |
 ```
 
 - Merge evidence and reasoning into the single `Giải thích` cell. Quote a
@@ -543,7 +511,7 @@ Table format is exactly three columns:
 
 Exactly two sections, in this order, with these exact headings:
 
-1. `# VOCABULARY`. 20-26 rows: | Word / phrase | Type | Gloss in {{L1}} |.
+1. `# VOCABULARY`. 20-26 rows: | Word / phrase | Type | Gloss in Vietnamese |.
    Only items actually used in the passage. Prioritise academic
    collocations and hedging language over topic nouns.
 2. `# PARAPHRASE PAIRS`. 10-15 rows: | In the passage | In the question |.
@@ -564,259 +532,3 @@ many workbooks exist at the time of writing. If you emit a comparison table
 at all, the heading is exactly `# BẢNG SO SÁNH`.
 
 === END PROMPT ===
-```
-
----
-
-# PHẦN 2 — PROMPT RÚT GỌN
-
-Dùng khi model có context ngắn, hoặc khi bạn đã chạy prompt dài một lần trong cùng session và chỉ muốn ra bài tiếp theo.
-
-```
-=== BEGIN SHORT PROMPT ===
-
-Write an IELTS Academic Reading workbook on {{TOPIC}}, as one markdown
-file, following this exact spec:
-
-PASSAGE: original, 900-1000 words, 8 paragraphs labelled A-H, Passage-3
-difficulty. Must carry an argument with two opposing scholarly positions
-and a hedged authorial view, contain 6-10 real datable facts, 3-5 named
-people or organisations, one labellable object, and at least two
-"precision sentences" where the writer corrects a likely misreading.
-Attribute contested claims; never assert them.
-
-QUESTIONS: exactly 86, in this fixed order —
-1-8 Matching Headings (12 headings) | 9-14 Matching Information |
-15-21 T/F/NG | 22-28 Y/N/NG | 29-34 Matching Features |
-35-39 Matching Sentence Endings (7 endings) | 40-44 Sentence Completion |
-45-49 Summary from passage | 50-54 Summary from a 10-word list |
-55-59 Note Completion | 60-65 Table Completion | 66-70 Flow-chart |
-71-74 Diagram Label | 75-78 MCQ single | 79-82 MCQ two-answer (2 sets) |
-83-86 Short answer.
-
-Group into 4 parts under `# PHẦN n — …` headings. Head every type with
-`## Dạng <n> — <English Type Name> (Questions <a>–<b>)` (em dash `—`
-between number and name, en dash `–` in the range).
-
-FORMAT — these are structural markers, not style:
-- Line 1 is YAML frontmatter with exactly 9 fields: workbook_id, title,
-  topic_slug, passage_word_count (850-1050), question_count,
-  question_types (a LIST of 16 kind slugs, not the number 16),
-  answer_language (a LIST, e.g. [en, vi]), passage_language, created.
-- H1 immediately after it, equal to `title` character for character.
-  No `## Passage:` line, no `**86 questions · …**` line.
-- Every type gets a tactics box whose first line is exactly
-  `> **Chiến thuật**`, then 3-4 bullets in {{L1}}. All 16 types.
-- Every type gets an instruction line in italics, with no rubric prefix:
-  `*Choose **NO MORE THAN TWO WORDS** from the passage for each answer.*`
-- `>` in the question area means tactics box and nothing else. The summary
-  body for types 8 and 9 is a plain paragraph.
-- One option per line: `**A** text`. No `**List of Headings**` label.
-- Blanks: `**55** ______` outside code fences, `66 ______` inside them,
-  always exactly six underscores. ASCII frames must stay column-aligned.
-
-BALANCE: T/F/NG = 2 TRUE, 3 FALSE, 2 NOT GIVEN. Y/N/NG must include a
-future-tense NOT GIVEN. Include at least one FALSE created by dropping a
-qualifier from the passage. Include two plausible-but-unstated unused
-sentence endings.
-
-VERIFY before output: every answer traceable to one specific sentence;
-NOT GIVEN means neither supported nor contradicted; every gap-fill answer
-verbatim AND within the word limit you yourself stated for that block.
-
-THEN: answer key by type, headed with the same type names minus the
-`(Questions a–b)` suffix, in tables of exactly three columns
-`| Q | Đ.án | Giải thích |`. The third cell may be empty except for types
-1, 3, 4, 14, 15. Answer cell shapes: `**X**`, `**X** label`, or
-`**A** và **C**`, optionally `(chấp nhận *Y*)`. No commentary in the
-answer cell. Then `# VOCABULARY` (20-26 rows) and `# PARAPHRASE PAIRS`
-(10-15 rows). No diagnostic table — the app supplies a shared one.
-
-Output the file only. No preamble.
-
-=== END SHORT PROMPT ===
-```
-
----
-
-# PHẦN 3 — PROMPT KIỂM TRA
-
-> **Đọc trước:** phần lớn lỗi *format* không cần model kiểm — máy kiểm rẻ hơn
-> và chắc hơn. Quy trình đúng khi có file mới:
->
-> ```bash
-> cp workbook-moi.md test/
-> node scripts/normalize.mjs   # vá drift CƠ HỌC, idempotent, chạy lại vô hại
-> npm run validate             # chặn drift NGỮ NGHĨA
-> npm test
-> ```
->
-> `normalize.mjs` **tự sửa** được nhóm cơ học, nên đừng bắt model học thuộc:
-> nhãn `Nhắc lại` → `Chiến thuật` · số cột bảng đáp án · options nhiều trên
-> một dòng · `— chấp nhận` → `(chấp nhận …)` · ngoặc bình luận ở mcq-multi ·
-> `___` → `__` ở bảng so sánh · độ dài dãy gạch dưới · `---` đôi · tiền tố
-> rubric của instruction · tên dạng ở khu đáp án.
->
-> `validate` **không tự sửa được**, model bắt buộc phải làm đúng: 9 trường
-> frontmatter · H1 khớp `title` · số câu liên tục và khớp `question_count` ·
-> mỗi câu đúng một đáp án · đủ `strategy` và `instruction` ở mọi khối ·
-> ô `Giải thích` ở D1/D3/D4/D14/D15 · số in đậm ngoài fence / số trần trong
-> fence · căn cột ASCII · đáp án nằm trong `wordLimit` của chính khối.
->
-> Prompt kiểm dưới đây lo phần **nội dung** — thứ không máy nào kiểm được.
-
-Model yếu hầu như luôn hỏng ở bốn chỗ. Chạy prompt này trên output của chúng **trước khi** nạp vào DB.
-
-```
-=== BEGIN AUDIT PROMPT ===
-
-Audit the IELTS workbook below. Do not rewrite it. Output a defect list
-only, in this format: | Q# | Defect code | What is wrong | Fix |
-
-Check every question against these codes:
-
-D1  UNVERIFIABLE — no sentence in the passage decides this item.
-D2  FALSE-AS-NG — marked NOT GIVEN but a sentence contradicts it;
-    correct answer is FALSE.
-D3  NG-AS-TRUE — marked TRUE but requires inference beyond the text;
-    correct answer is NOT GIVEN.
-D4  OVER-LIMIT — gap-fill answer exceeds its own stated word limit.
-D5  NOT-VERBATIM — gap-fill answer is a paraphrase, not copied from
-    the passage.
-D6  UNGRAMMATICAL — completed sentence does not parse.
-D7  DUPLICATE — two questions test the same sentence the same way.
-D8  DEAD-DISTRACTOR — a wrong option nobody could plausibly choose.
-D9  COUNT — question count, numbering range, or option count departs
-    from the spec.
-D10 UNBALANCED — T/F/NG distribution outside 2/3/2, or fewer than 2
-    NOT GIVEN.
-D11 FACT — a date, figure or name in the passage is false or
-    unverifiable.
-D12 UNATTRIBUTED — a contested claim asserted rather than attributed.
-D13 KEY-OVER-LIMIT — the official answer itself exceeds the word limit
-    stated for its own block. The paper marks its own key wrong.
-D14 MISSING-STRATEGY — a question type has no `> **Chiến thuật**` block,
-    or the label is not that exact string.
-D15 EMPTY-EXPLANATION — the `Giải thích` cell is empty for a type 1, 3,
-    4, 14 or 15 question, where the reason is not self-evident.
-
-End with a single line: PASS or FAIL (N defects).
-
-WORKBOOK:
-[paste]
-
-=== END AUDIT PROMPT ===
-```
-
-**Bốn lỗi model yếu hay mắc nhất, theo thứ tự tần suất:**
-
-1. **D3 — biến NOT GIVEN thành TRUE.** Model có xu hướng "giúp" bằng cách suy luận. Đây là lỗi tai hại nhất vì nó dạy bạn đúng cái thói quen bạn đang cần bỏ.
-2. **D4/D5 — đáp án điền từ vượt giới hạn hoặc bị paraphrase.** Model viết "official permission" cho đề "NO MORE THAN TWO WORDS" thì ổn, nhưng viết "the Buddhist Digital Resource Center" cho cùng đề thì hỏng.
-3. **D8 — phương án nhiễu chết.** Model lười sẽ đặt các phương án sai lệch hẳn chủ đề, không ai chọn. Bẫy phải **hấp dẫn** mới có giá trị luyện tập.
-4. **D11 — bịa số liệu.** Nguy hiểm nhất vì khó phát hiện. Nếu chủ đề có số liệu quan trọng, bắt model **trích nguồn riêng** cho từng con số trước khi viết bài.
-
----
-
-# PHẦN 4 — GHI CHÚ DATABASE
-
-## YAML frontmatter
-
-Khối này phải là **dòng 1** của file. `docs/canonical-format.md` §N-A định nghĩa
-**đúng 9 trường bắt buộc**; `npm run validate` đối chiếu từng trường với thân file.
-
-```
----
-workbook_id: 6
-title: The Global Spread of Coffee Cultivation
-topic_slug: coffee-cultivation
-passage_word_count: 947
-question_count: 86
-question_types:
-  - matching-headings
-  - matching-information
-  - tfng
-  - ynng
-  - matching-features
-  - matching-endings
-  - gap-text
-  - gap-text
-  - gap-select
-  - gap-text
-  - gap-table
-  - gap-flow
-  - gap-diagram
-  - mcq-single
-  - mcq-multi
-  - short-answer
-answer_language: [en, vi]
-passage_language: en
-created: 2026-08-17
----
-```
-
-**Ba chỗ trước đây spec này ghi sai, model hay chép lại:**
-
-| Sai | Đúng | Vì sao |
-|---|---|---|
-| `question_types: 16` | **danh sách 16 slug** như trên | `validate` đối chiếu với `blocks.map(b => b.kind)`. Con số thì không kiểm chéo được, danh sách thì có |
-| `answer_language: vi` | **danh sách** `[en, vi]` | có `vi` ⇒ grading bật lượt so sánh bỏ dấu (`Luy Lau` = `Luy Lâu`). Đáp án tiếng Anh vẫn cần `en` |
-| thêm `domain`, `level`, `sources_consulted`, `generator_model`, `audit_status`… | **bỏ hết** | 9 trường, không hơn. Muốn lưu metadata sinh bài thì để ngoài file |
-
-Ghi chú:
-- `title` **không cần bọc nháy**, trừ khi chứa dấu `:` — lúc đó YAML bắt buộc phải bọc.
-- `topic_slug` là **`ParsedTest.id`**, tức khoá `localStorage`. Đổi tên file không sao, đổi slug là mất tiến trình người học.
-- `passage_word_count` phải nằm trong **850–1050** và lệch ≤ 2% so với số từ đếm thật.
-
-## Quy ước tên file
-
-```
-wb{ID}_{topic_slug}_{level}.md
-```
-Ví dụ: `wb06_coffee-cultivation_p3.md`
-
-## Khoá dedup
-
-Dùng `topic_slug` làm khoá chính. Trước khi sinh bài mới, query xem
-`topic_slug` đã tồn tại chưa — nếu có, hoặc đổi chủ đề, hoặc tăng
-`workbook_id` và thêm hậu tố `-b` vào slug.
-
-## Trường nên index
-
-- `topic_slug` — dedup
-- `domain` / `subdomain` — để lọc khi muốn đa dạng chủ đề
-- `audit_status` — không bao giờ đưa bài `fail` vào bộ ôn
-- `contested_topic` — để bạn biết bài nào cần đọc kỹ phần quy thuộc
-
-## Gợi ý cho workflow LaTeX của bạn
-
-Vì bạn đang build master PDF từ các file markdown, thêm hai trường nữa
-sẽ tiện:
-
-```
-xelatex_safe: true      # true nếu passage không chứa ký tự cần font đặc biệt
-diacritics_heavy: false # true nếu có nhiều tên riêng tiếng Việt/Sanskrit
-```
-
-Các bài về Phật giáo Việt Nam đều nên đặt `diacritics_heavy: true` —
-chúng chứa Đinh Liễn, Tì-ni-đa-lưu-chi, Uṣṇīṣavijaya, thứ sẽ làm vỡ
-build nếu font không có đủ glyph.
-
----
-
-# PHỤ LỤC — VÌ SAO PROMPT NÀY DÀI ĐẾN VẬY
-
-Ba phần chiếm phần lớn độ dài, và cả ba đều không thể cắt:
-
-**Part D (bảng phân loại bẫy).** Không có nó, model sẽ ra 86 câu hỏi
-"đúng dạng" nhưng dễ, vì mọi phương án sai đều sai lộ liễu. Bảng T1-T14
-là thứ biến bài tập thành bài luyện.
-
-**Part E (verification).** Không có nó, tỉ lệ câu không kiểm chứng được
-thường rơi vào khoảng 10-15%. Với 86 câu thì đó là 9-13 câu rác, và bạn
-sẽ mất thời gian cãi nhau với đáp án sai thay vì học.
-
-**Yêu cầu "precision sentences" ở Part A.** Đây là chỗ duy nhất trong
-spec tác động lên **bài đọc** thay vì lên câu hỏi. Nếu bài đọc không có
-những câu tác giả dừng lại để đính chính, thì đơn giản là không có chỗ
-nào để đặt câu hỏi mức 7.5+. Bạn không thể ra đề khó trên một văn bản
-phẳng.

@@ -3,3 +3,6 @@ dist/
 .baseline/
 *.local
 .DS_Store
+
+# Đề sinh ra nhưng chưa qua validate — không phải nguồn của app
+drafts/
