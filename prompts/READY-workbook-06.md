@@ -154,6 +154,19 @@ This is where generated files most often go wrong. A question item is
 numbered `1.` with a period — it is NOT `**1**`. Bold numbers are used
 ONLY for gap markers inside running text, tables and captions.
 
+Type 1's heading list is a **two-column markdown table**, not bold lines.
+Roman numerals in bold lines are silently unusable — write the table:
+
+```
+| | |
+|---|---|
+| **i** | A familiar formula that deserves scrutiny |
+| **ii** | Traditions the standard list leaves out |
+```
+
+Types 5, 6 and 9 use plain bold lines instead, one per line, capital
+letters: `**A** Hộ Tông`. Only type 1 uses the roman table.
+
 ```
 D1  Matching Headings          1. Paragraph **A** ______
 D2  Matching Information       9. an explanation of why funding was fragile ______

@@ -346,11 +346,20 @@ describe('biến thể format', () => {
   });
 
   it('bẫy #27 — bảng SO SÁNH cuối file không bị nhận nhầm thành diagnostics', () => {
+    // `# BẢNG SO SÁNH` là TUỲ CHỌN (canonical §N26) — đề mới không sinh nó nữa.
+    // Điều phải đúng là: có hay không thì cũng không được chui vào diagnostics.
+    const withComparison = all.filter((t) => t.extras.comparison);
+    expect(withComparison.length, 'phải còn ít nhất một đề có bảng so sánh để test có nghĩa').toBeGreaterThan(0);
     for (const t of all) {
       if (t.diagnosticsSource === 'file') continue;
-      expect(t.diagnostics, `${t.id} không có bảng riêng nên phải rỗng`).toEqual([]);
-      // nhưng bảng so sánh vẫn phải được giữ lại như extras
-      expect(t.extras.comparison, t.id).toBeTruthy();
+      expect(t.diagnostics, `${t.id} không có bảng chẩn đoán riêng nên phải rỗng`).toEqual([]);
+    }
+    for (const t of withComparison) {
+      // bảng so sánh phải nằm ở extras, và tuyệt đối không lẫn sang diagnostics
+      expect(t.extras.comparison, t.id).toContain('|');
+      for (const d of t.diagnostics) {
+        expect(t.extras.comparison, `${t.id}: dòng chẩn đoán trùng nội dung bảng so sánh`).not.toContain(d.advice);
+      }
     }
   });
 

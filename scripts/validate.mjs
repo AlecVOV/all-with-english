@@ -167,26 +167,49 @@ for (const name of files) {
     });
   }
 
-  /* code fence: căn cột `│ ┌ ┐ └ ┘ ├` phải khớp giữa các dòng có viền.
-     Khung cây (`├`/`└` nhiều mức) được miễn — chỉ soi khung có viền phải `│…│`. */
+  /* Code fence (canonical-format §6, #14 KEEP).
+   *
+   * CỐ Ý KHÔNG kiểm căn cột ở đây. Đã thử hai bản và cả hai đều báo nhầm
+   * trên sơ đồ hợp lệ: bản 1 coi đường nối dọc giữa hai hộp (`      │`) là
+   * viền lệch; bản 2 vấp tiếp ở nhánh `┌───┴───┐` và hai hộp nằm cạnh nhau
+   * trên cùng một dòng. Sơ đồ vẽ tay có quá nhiều hình dạng hợp lệ để kiểm
+   * bằng hình học — mà #14 vốn là KEEP: "giữ raw, render <pre>, không dựng
+   * lại layout".
+   *
+   * Bất biến thật sự cần bảo vệ là "sửa trong fence phải giữ nguyên số ký tự
+   * của dòng", và nó đã được **assert cứng ngay trong scripts/normalize.mjs**
+   * — nơi duy nhất có code sửa fence. Canh ở chỗ sửa đúng hơn canh ở đây.
+   *
+   * Chỗ này chỉ kiểm hai thứ máy phán được chắc chắn. */
   {
-    let fence = false, buf = [];
-    for (const l of lines) {
+    let fence = false;
+    let buf = [];
+    let opened = 0;
+    lines.forEach((l, i) => {
       if (/^```/.test(l)) {
-        if (fence && buf.length) {
-          const boxed = buf.filter((s) => /│/.test(s) && !/[├─]{2}/.test(s));
-          const sets = new Set(
-            boxed.map((s) => [...s].map((c, k) => ('│┌┐└┘'.includes(c) ? k : -1)).filter((k) => k >= 0).join(','))
-          );
-          if (sets.size > 1) err(`code fence: cột của "│ ┌ ┐ └ ┘" không khớp giữa các dòng (§6)`);
-          const lens = new Set(boxed.map((s) => [...s].length));
-          if (lens.size > 1) err(`code fence: các dòng viền không cùng độ dài (§6)`);
-        }
+        if (fence) {
+          // blank số trần trong fence phải nằm trong range của khối nào đó
+          for (const s of buf) {
+            for (const mm of s.matchAll(/(\d+)\s+_{3,}/g)) {
+              const n = Number(mm[1]);
+              if (!t.blocks.some((b) => n >= b.range[0] && n <= b.range[1])) {
+                err(`code fence: "${n} ______" không nằm trong dải câu của khối nào`);
+              }
+            }
+            if (/\*\*\d+\*\*\s+_{3,}/.test(s)) {
+              err(`code fence dòng ${i}: chỗ trống trong fence phải là số TRẦN, không in đậm (§3.3)`);
+            }
+          }
+          buf = [];
+        } else opened++;
         fence = !fence;
-        buf = [];
-        continue;
+        return;
       }
       if (fence) buf.push(l);
+    });
+    if (fence) err('code fence mở mà không đóng');
+    if (opened === 0 && t.blocks.some((b) => b.kind === 'gap-flow' || b.kind === 'gap-diagram')) {
+      err('có khối gap-flow/gap-diagram nhưng không tìm thấy code fence nào');
     }
   }
 

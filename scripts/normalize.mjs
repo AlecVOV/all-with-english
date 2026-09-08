@@ -479,6 +479,45 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
   }
 
   /* ================================================================ *
+   * N08b — danh sách heading của D1 về dạng bảng roman
+   *
+   * Canonical (canonical-format §N07) là hàng bảng `| **i** | text |`.
+   * Model sinh mới hay viết `**i** text` — trông rất hợp lý, nhưng parser
+   * khớp options theo `**[A-Z]**` nên chữ số La Mã thường bị bỏ hết, và cả
+   * khối 8 câu mất sạch lựa chọn. Đã lọt qua mọi cổng kiểm một lần.
+   * ================================================================ */
+  {
+    const m = marks(L);
+    const fm = fenceMap(L);
+    for (let i = m.questions[0]; i < m.questions[1]; i++) {
+      const head = L[i].text.match(/^##\s+Dạng\s+\d+\s*[–—-]\s*(.+?)\s*\(Questions/);
+      if (!head || !head[1].includes('Matching Headings')) continue;
+
+      let end = i + 1;
+      while (end < m.questions[1] && !/^##?\s/.test(L[end].text)) end++;
+
+      // đã ở dạng bảng rồi thì thôi
+      if (L.slice(i, end).some((l) => /^\|\s*\*\*[ivx]+\*\*\s*\|/i.test(l.text))) continue;
+
+      const romanLines = [];
+      for (let k = i; k < end; k++) {
+        if (fm[k]) continue;
+        if (/^\*\*[ivx]+\*\*\s+\S/i.test(L[k].text)) romanLines.push(k);
+      }
+      if (!romanLines.length) continue;
+
+      romanLines.forEach((k, idx) => {
+        const mm = L[k].text.match(/^\*\*([ivx]+)\*\*\s+(.*)$/i);
+        if (!mm) return;
+        const after = `| **${mm[1].toLowerCase()}** | ${mm[2].trim()} |`;
+        note('N08b', L[k].orig, L[k].text, after);
+        // hàng đầu tiên mang theo header + dòng ngăn của bảng markdown
+        L[k].text = idx === 0 ? `| | |\n|---|---|\n${after}` : after;
+      });
+    }
+  }
+
+  /* ================================================================ *
    * N07 — bỏ `optionsLabel` (`**List of Headings**`, `**List of People**`)
    * ================================================================ */
   {
@@ -633,7 +672,7 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
 /* ================================================================== *
  * Báo cáo
  * ================================================================== */
-const RULES = ['N-A', 'N03', 'N04a', 'N07', 'N08', 'N12', 'N13', 'N16', 'N17', 'N18', 'N21', 'N25', 'N26', 'N28', 'N33', 'N39', 'N-B'];
+const RULES = ['N-A', 'N03', 'N04a', 'N07', 'N08', 'N08b', 'N12', 'N13', 'N16', 'N17', 'N18', 'N21', 'N25', 'N26', 'N28', 'N33', 'N39', 'N-B'];
 
 console.log(`\n=== normalize.mjs ${DRY ? '(DRY RUN — không ghi file)' : '— đã ghi test/*.md'} ===\n`);
 

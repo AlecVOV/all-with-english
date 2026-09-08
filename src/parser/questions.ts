@@ -309,6 +309,14 @@ function parseOneBlock(rb: RawBlock, warn: (s: string) => void): QuestionBlock {
   return finish(block, warn);
 }
 
+/** Dạng nào bắt buộc phải có danh sách lựa chọn ở cấp khối. */
+const NEEDS_BLOCK_OPTIONS = new Set<QuestionKind>([
+  'matching-headings',
+  'matching-features',
+  'matching-endings',
+  'gap-select',
+]);
+
 function finish(block: QuestionBlock, warn: (s: string) => void): QuestionBlock {
   const covered = new Set<number>();
   for (const q of block.questions) {
@@ -319,5 +327,25 @@ function finish(block: QuestionBlock, warn: (s: string) => void): QuestionBlock 
   for (let n = block.range[0]; n <= block.range[1]; n++) {
     if (!covered.has(n)) warn(`Dạng ${block.typeIndex}: thiếu câu ${n}`);
   }
+
+  /* Khối không có lựa chọn thì người làm không có gì để chọn — câu hỏi hiện ra
+     nhưng vô dụng. Đã lọt một lần: 12 heading viết dạng `**i** text` thay vì
+     hàng bảng `| **i** | text |`, parser bỏ hết, mọi cổng kiểm vẫn báo xanh. */
+  if (NEEDS_BLOCK_OPTIONS.has(block.kind) && !block.options?.length) {
+    warn(
+      `Dạng ${block.typeIndex} (${block.kind}): không parse ra lựa chọn nào — ` +
+        `${block.range[1] - block.range[0] + 1} câu sẽ không có gì để chọn`
+    );
+  }
+
+  /* mcq: lựa chọn nằm ở từng câu, không ở cấp khối. */
+  if (block.kind === 'mcq-single' || block.kind === 'mcq-multi') {
+    for (const q of block.questions) {
+      if (!q.options?.length) {
+        warn(`Dạng ${block.typeIndex}: câu ${q.qno} không parse ra phương án nào`);
+      }
+    }
+  }
+
   return block;
 }
