@@ -412,6 +412,36 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
   }
 
   /* ================================================================ *
+   * N18b — `(chấp nhận *X*)` đặt nhầm ở cột 3 thì dời về đuôi cột 2
+   *
+   * Ví dụ thật (workbook-07 câu 66):
+   *   | 66 | **Nagtso Tsultrim Gyalwa** | (chấp nhận *Nagtso*) — bài gọi… |
+   * Biến thể ngắn nằm sai cột thì grading không thấy, người học gõ đúng
+   * "Nagtso" vẫn bị chấm sai — và ở đây đáp án chính lại vượt wordLimit,
+   * nên cả câu thành không thể ăn điểm.
+   *
+   * Chỉ nhận khi cụm đứng ĐẦU cột 3 và nằm trong ngoặc, để không đụng vào
+   * chữ "chấp nhận" dùng như văn xuôi giữa câu (#19 KEEP).
+   * ================================================================ */
+  {
+    const m = marks(L);
+    for (let i = m.answers[0]; i < m.answers[1]; i++) {
+      if (!isTableRow(L[i].text) || isSepRow(L[i].text)) continue;
+      const cs = cells(L[i].text);
+      if (cs.length < 3) continue;
+      if (!/^\d+(\s*[–—-]\s*\d+)?$/.test(cs[0])) continue;
+      if (/\(\s*chấp nhận/i.test(cs[1])) continue; // cột 2 đã có rồi thì thôi
+
+      const mm = cs[2].match(/^\(\s*(chấp nhận\s+[^)]+)\)\s*(?:[—–-]\s*)?(.*)$/i);
+      if (!mm) continue;
+
+      const after = row([cs[0], `${cs[1]} (${mm[1].trim()})`, mm[2].trim(), ...cs.slice(3)]);
+      note('N18b', L[i].orig, L[i].text, after);
+      L[i].text = after;
+    }
+  }
+
+  /* ================================================================ *
    * N17 — blockNote luôn in nghiêng, một dòng
    * Ví dụ thật (W1:461): `**Tổng kết bẫy dạng này:** câu 18 và 20 …`
    * Bọc cả câu bằng `*…*`, gỡ nhãn in đậm dẫn đầu, và gỡ cặp `*…*`
@@ -672,7 +702,7 @@ for (const name of fs.readdirSync(TEST_DIR).filter((f) => f.endsWith('.md')).sor
 /* ================================================================== *
  * Báo cáo
  * ================================================================== */
-const RULES = ['N-A', 'N03', 'N04a', 'N07', 'N08', 'N08b', 'N12', 'N13', 'N16', 'N17', 'N18', 'N21', 'N25', 'N26', 'N28', 'N33', 'N39', 'N-B'];
+const RULES = ['N-A', 'N03', 'N04a', 'N07', 'N08', 'N08b', 'N12', 'N13', 'N16', 'N17', 'N18', 'N18b', 'N21', 'N25', 'N26', 'N28', 'N33', 'N39', 'N-B'];
 
 console.log(`\n=== normalize.mjs ${DRY ? '(DRY RUN — không ghi file)' : '— đã ghi test/*.md'} ===\n`);
 
