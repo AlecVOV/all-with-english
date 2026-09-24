@@ -238,3 +238,100 @@ Xếp theo giá trị trên công sức.
 6. **Thêm `public/favicon.svg`** để console sạch.
 7. **Cân nhắc `content-visibility: auto`** cho các nhóm câu sai đã thu gọn ở màn
    kết quả, nếu corpus lớn lên làm màn đó chậm.
+
+---
+
+## 5. Đợt tiếp theo — đã làm (cùng nhánh, trước khi merge)
+
+Năm việc lấy thẳng từ mục 4 và mục 3 ở trên. `npm run build` pass ·
+`npm test` **141/141** xanh (trước 130) · `npm run validate` exit 0, không còn
+mục nợ nào · `npm run test:e2e` 10/10 xanh.
+
+### 5.1 Bài kiểm đầu-cuối thành test cố định
+
+`tests/e2e/full-run.spec.ts`, chạy bằng `npm run test:e2e` (Playwright, chỉ
+chromium). Script kiểm tay ở mục 2.8 — thứ đã tìm ra ba lỗi mà 130 test đơn vị
+không thấy — giờ chạy lại được bất cứ lúc nào.
+
+- Tự quét `test/` lúc chạy: thả thêm một `.md` là có thêm một case, không
+  manifest, không tên file viết cứng.
+- Giá trị điền lấy từ bảng `ĐÁP ÁN` của chính đề, không viết tay câu nào.
+- Hình dạng ô điều khiển suy từ `kind` đã parse; giá trị hợp lệ (option của
+  `<select>`, nhãn nút TRUE/FALSE) đọc ngược từ DOM — nên test không thể "đúng"
+  nhờ đoán trùng.
+- Trước khi xác nhận nộp, đòi hộp thoại nói *Đã trả lời đủ n câu*: mọi số câu
+  đều phải tìm thấy ô điều khiển và ghi được giá trị. Đây chính là bẫy đã cho
+  lọt lỗi dropdown rỗng.
+- Đích đến là **điểm tối đa**. Thêm `data-wrong-qno` ở màn kết quả để khi fail
+  còn biết sai câu nào.
+
+**Lỗi gõ quá số từ** (mục 3, gạch đầu dòng cuối): script cũ gõ nguyên `display`
+nên ở W7 câu 66 nhận `over-limit` — đúng luật chấm, sai cách kiểm. Bản cố định
+gõ **biến thể ngắn nhất còn nằm trong `wordLimit` của chính khối**, đúng như
+thí sinh biết luật sẽ viết.
+
+### 5.2 `validate` siết thêm một mức
+
+Trước: chỉ FAIL khi **không** biến thể nào vừa `wordLimit`. Nên một đáp án chính
+3 từ trong khối "NO MORE THAN TWO WORDS" lọt sạch chỉ vì có `(chấp nhận …)`
+ngắn hơn — và người học đọc bảng đáp án vẫn thấy bản dài.
+
+Giờ thêm một mức WARN cho đúng ca đó. Đi vào kênh **NỢ NỘI DUNG**, không chặn:
+`CLAUDE.md` §8 nói đúng hai kênh chẩn đoán, lỗi cấu trúc mới FAIL. Chạy với
+`--strict` thì nợ cũng thành lỗi.
+
+### 5.3 W7 câu 66 — sửa corpus
+
+Bài đọc dùng sẵn dạng rút gọn một từ ngay câu sau (*"Nagtso waited…"*), nên
+**có** đáp án đúng nội dung mà vừa giới hạn. Đổi chỗ đáp án chính và biến thể:
+
+```
+- | 66 | **Nagtso Tsultrim Gyalwa** (chấp nhận *Nagtso*) | …
++ | 66 | **Nagtso** (chấp nhận *Nagtso Tsultrim Gyalwa*) | …
+```
+
+Không nới chỉ dẫn khối lên THREE WORDS: câu 67–70 đều ≤ 2 từ, nới là hạ chuẩn
+cả khối và phá luôn dòng chiến thuật *"Giới hạn hai từ: 'three years' vừa đủ"*.
+Cột Giải thích viết lại cho nói rõ vì sao tên đầy đủ vẫn 0 điểm — đó đúng là
+luật thí sinh hay quên.
+
+**Đi ra ngoài `CLAUDE.md` §10 ở chỗ nào, và vì sao.** §10 bắt sửa corpus qua
+`scripts/normalize.mjs` rồi chứng minh bằng `verify-migration.mjs`. Ở đây không
+dùng được, và không nên dùng:
+
+- `normalize.mjs` là hiện thực của §4 `canonical-format` — luật hình thức áp cho
+  **mọi** file. Nhét một quy tắc "ô 66 của W7" vào đó là hardcode nội dung đề
+  vào code, đúng thứ §10 cấm ở gạch đầu dòng thứ nhất.
+- `verify-migration.mjs` tồn tại để chứng minh normalize **không đổi giá trị đáp
+  án**. Đây lại là một thay đổi giá trị đáp án có chủ ý, nên nó sẽ FAIL đúng như
+  thiết kế — đó là bằng chứng ngược, không phải bằng chứng.
+
+§10 cấm sửa `test/` **cho dễ parse**. Đây là sửa một mâu thuẫn nội dung mà chính
+§4.8 gọi tên: *"đáp án chính thức của một câu phải nằm trong `wordLimit` của
+chính khối nó… vi phạm nghĩa là đề tự chấm sai đáp án của mình"*. Bằng chứng
+thay vào đó là `validate` + `npm test` + `npm run test:e2e`, cả ba xanh, và
+diff gói gọn trong một dòng, revert được độc lập.
+
+### 5.4 `md()` / `mdInline()` escape HTML
+
+`marked` escape ký tự lẻ (`a < b` → `a &lt; b`), nhưng cái gì **trông giống thẻ**
+thì nó thả nguyên xuống HTML — mà mọi chỗ gọi đều đổ vào
+`dangerouslySetInnerHTML`. Corpus hiện không có ký tự nào như vậy, nhưng đề là
+file người dùng tự thả vào `test/` (§1), nên một dòng `<script>` hay
+`<img onerror=…>` trong một đề mới sẽ chạy thật.
+
+Sửa ở `renderer.html` — nhánh duy nhất `marked` trả HTML thô, dùng chung cho thẻ
+giữa dòng lẫn khối nguyên đoạn. `**…**`, ký hiệu `⚠️ ≥ → ↔ ≠` và Latin mở rộng
+không đổi; 11 test mới trong `src/lib/__tests__/markdown.test.ts` canh cả hai
+chiều.
+
+### 5.5 Favicon
+
+`public/favicon.svg`: trang giấy có vệt bôi vàng. Màu lấy thẳng từ `tokens.css`
+(`--c-accent`, `--paper`, `--c-mark`), không thêm giá trị thô mới. Kiểm ở
+128 / 32 / 16px — vệt vàng vẫn đọc được ở cỡ nhỏ nhất. Console hết 404.
+
+### 5.6 Còn lại trong mục 4
+
+Chưa làm: `lang` cho text câu hỏi (1), màn hình hẹp (2), phím tắt nhảy câu (3),
+kiểm bằng NVDA thật (4), `content-visibility` cho màn kết quả (7).
