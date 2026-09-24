@@ -6,3 +6,7 @@ dist/
 
 # Đề sinh ra nhưng chưa qua validate — không phải nguồn của app
 drafts/
+
+# Playwright
+test-results/
+playwright-report/

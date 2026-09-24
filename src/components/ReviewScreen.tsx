@@ -386,7 +386,9 @@ function WrongList({
 
               <ul className="divide-y divide-line border-t border-line">
                 {items.map((r) => (
-                  <li key={r.qno} className="px-4 py-3">
+                  /* `data-wrong-qno` là mỏ neo cho bài kiểm đầu-cuối: khi điền
+                     đúng hết mà vẫn có câu bị chấm sai, nó liệt kê ra số câu. */
+                  <li key={r.qno} data-wrong-qno={r.qno} className="px-4 py-3">
                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
                       <span className="qbadge">{r.qno}</span>
                       {r.verdict === 'blank' && (
