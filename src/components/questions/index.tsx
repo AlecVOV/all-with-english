@@ -4,9 +4,14 @@
  *
  * `value` là chuỗi. Với mcq-multi, nhiều lựa chọn nối bằng dấu phẩy —
  * chấm điểm không xét thứ tự nên biểu diễn phẳng là đủ.
+ *
+ * Mọi chuỗi đến từ file đề (`prompt`, `Option.text`, `caption`) đều đi qua
+ * `mdInline`: canonical format cố ý giữ `**…**` trong đó, render là việc của
+ * tầng hiển thị (CLAUDE.md §13.4).
  */
 
 import type { Option, Question, QuestionBlock, Segment } from '../../parser/types';
+import { mdInline } from '../../lib/markdown';
 
 export interface QProps {
   block: QuestionBlock;
@@ -18,36 +23,42 @@ export interface QProps {
   activeQno?: number;
 }
 
+/** Chuỗi một dòng từ file đề → HTML inline. */
+function Inline({ text, className }: { text: string | undefined; className?: string }): JSX.Element {
+  return <span {...(className ? { className } : {})} dangerouslySetInnerHTML={{ __html: mdInline(text) }} />;
+}
+
+/** Số câu — mỏ neo điều hướng chính, nên đậm bằng nội dung chứ không nhạt hơn. */
+function Qno({ n }: { n: string | number }): JSX.Element {
+  return <span className="w-7 shrink-0 text-right font-semibold tabular-nums text-ink">{n}</span>;
+}
+
 /* ------------------------------------------------------------------ */
-const inputCls =
-  'inline-block min-w-[7rem] rounded border border-slate-400 bg-white px-2 py-0.5 ' +
-  'focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-200 disabled:bg-slate-100';
 
 export function Blank({
   qno,
   value,
   onChange,
   disabled,
-  width = 'min-w-[7rem]',
-  mono,
+  width = 'w-40',
 }: {
   qno: number;
   value: string;
   onChange: (qno: number, v: string) => void;
   disabled?: boolean;
   width?: string;
-  mono?: boolean;
 }): JSX.Element {
   return (
-    <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
-      <span className="rounded bg-slate-800 px-1.5 py-0.5 text-xs font-bold text-white">{qno}</span>
+    <span className="mx-0.5 inline-flex items-center gap-1 whitespace-nowrap align-baseline">
+      <span className="qbadge">{qno}</span>
       <input
         id={`q-${qno}`}
         data-qno={qno}
         type="text"
         autoComplete="off"
         spellCheck={false}
-        className={`${inputCls} ${width} ${mono ? 'font-mono' : ''}`}
+        aria-label={`Câu ${qno}`}
+        className={`field py-0.5 ${width}`}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(qno, e.target.value)}
@@ -62,11 +73,13 @@ export function Segments({
   values,
   onChange,
   disabled,
+  width,
 }: {
   segments: Segment[];
   values: Record<number, string>;
   onChange: (qno: number, v: string) => void;
   disabled?: boolean;
+  width?: string;
 }): JSX.Element {
   return (
     <>
@@ -78,9 +91,10 @@ export function Segments({
             value={values[s.qno!] ?? ''}
             onChange={onChange}
             disabled={disabled}
+            {...(width ? { width } : {})}
           />
         ) : (
-          <span key={i}>{s.value}</span>
+          <Inline key={i} text={s.value} />
         )
       )}
     </>
@@ -101,11 +115,14 @@ export function LetterSelect({
   onChange: (qno: number, v: string) => void;
   disabled?: boolean;
 }): JSX.Element {
+  // Không có badge số ở đây: dạng matching đã hiện số câu ở đầu dòng rồi,
+  // thêm badge nữa là số câu hiện hai lần trên cùng một dòng.
   return (
     <select
       id={`q-${qno}`}
       data-qno={qno}
-      className={`${inputCls} min-w-[6rem]`}
+      aria-label={`Câu ${qno}`}
+      className="field w-20 shrink-0 py-0.5"
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(qno, e.target.value)}
@@ -128,9 +145,9 @@ export function LetterSelect({
 export function MatchingQuestion({ block, question, value, onChange, disabled }: QProps): JSX.Element {
   const opts = question.options ?? block.options ?? [];
   return (
-    <div className="flex items-baseline gap-3">
-      <span className="w-7 shrink-0 text-right font-semibold text-slate-500">{question.qno}</span>
-      <span className="flex-1">{question.prompt}</span>
+    <div className="flex items-center gap-3">
+      <Qno n={question.qno} />
+      <Inline text={question.prompt} className="flex-1 text-read" />
       <LetterSelect
         qno={question.qno}
         options={opts}
@@ -146,21 +163,30 @@ export function MatchingQuestion({ block, question, value, onChange, disabled }:
 export function TrueFalseQuestion({ block, question, value, onChange, disabled }: QProps): JSX.Element {
   const opts = block.options ?? [];
   return (
-    <div className="flex flex-wrap items-baseline gap-3">
-      <span className="w-7 shrink-0 text-right font-semibold text-slate-500">{question.qno}</span>
-      <span className="min-w-[16rem] flex-1">{question.prompt}</span>
-      <span id={`q-${question.qno}`} data-qno={question.qno} className="flex shrink-0 gap-1">
-        {opts.map((o) => (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Qno n={question.qno} />
+      <Inline text={question.prompt} className="min-w-[14rem] flex-1 text-read" />
+      <span
+        id={`q-${question.qno}`}
+        data-qno={question.qno}
+        role="radiogroup"
+        aria-label={`Câu ${question.qno}`}
+        className="flex shrink-0 overflow-hidden rounded border border-line-field"
+      >
+        {opts.map((o, i) => (
           <button
             key={o.letter}
             type="button"
+            role="radio"
+            aria-checked={value === o.letter}
             disabled={disabled}
             onClick={() => onChange(question.qno, value === o.letter ? '' : o.letter)}
             className={
-              'rounded border px-2 py-0.5 text-xs font-semibold transition ' +
+              'px-2.5 py-1 text-sm font-semibold transition-colors ' +
+              (i > 0 ? 'border-l border-line-field ' : '') +
               (value === o.letter
-                ? 'border-sky-700 bg-sky-700 text-white'
-                : 'border-slate-400 bg-white text-slate-700 hover:bg-slate-100 disabled:hover:bg-white')
+                ? 'bg-accent text-white'
+                : 'bg-surface text-ink-2 hover:bg-surface-3 disabled:hover:bg-surface')
             }
           >
             {o.letter}
@@ -174,16 +200,17 @@ export function TrueFalseQuestion({ block, question, value, onChange, disabled }
 /** short-answer — ô nhập text tự do */
 export function ShortAnswerQuestion({ question, value, onChange, disabled }: QProps): JSX.Element {
   return (
-    <div className="flex items-baseline gap-3">
-      <span className="w-7 shrink-0 text-right font-semibold text-slate-500">{question.qno}</span>
-      <span className="flex-1">{question.prompt}</span>
+    <div className="flex items-center gap-3">
+      <Qno n={question.qno} />
+      <Inline text={question.prompt} className="flex-1 text-read" />
       <input
         id={`q-${question.qno}`}
         data-qno={question.qno}
         type="text"
         autoComplete="off"
         spellCheck={false}
-        className={`${inputCls} w-56`}
+        aria-label={`Câu ${question.qno}`}
+        className="field w-52 shrink-0 py-0.5"
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(question.qno, e.target.value)}
@@ -201,9 +228,9 @@ export function GapTextQuestion({
 }: Omit<QProps, 'value'> & { values: Record<number, string> }): JSX.Element {
   if (!question.segments) {
     return (
-      <div className="flex items-baseline gap-3">
-        <span className="w-7 shrink-0 text-right font-semibold text-slate-500">{question.qno}</span>
-        <span className="flex-1">{question.prompt}</span>
+      <div className="flex items-center gap-3">
+        <Qno n={question.qno} />
+        <Inline text={question.prompt} className="flex-1 text-read" />
         <Blank
           qno={question.qno}
           value={values[question.qno] ?? ''}
@@ -216,7 +243,7 @@ export function GapTextQuestion({
   // Giữ nguyên số space thụt lề gốc của bullet Note Completion (#15 KEEP)
   const indent = question.indent ?? 0;
   return (
-    <div className="leading-loose" style={{ paddingLeft: `${indent * 0.6}rem` }}>
+    <div className="text-read leading-loose" style={{ paddingLeft: `${indent * 0.75}rem` }}>
       <Segments
         segments={question.segments}
         values={values}
@@ -238,15 +265,16 @@ export function GapSelectQuestion({
   const opts = block.options ?? [];
   const segs = question.segments ?? [];
   return (
-    <div className="leading-loose">
+    <div className="text-read leading-loose">
       {segs.map((s, i) =>
         s.type === 'blank' ? (
-          <span key={i} className="inline-flex items-baseline gap-1">
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-xs font-bold text-white">{s.qno}</span>
+          <span key={i} className="mx-0.5 inline-flex items-center gap-1 align-baseline">
+            <span className="qbadge">{s.qno}</span>
             <select
               id={`q-${s.qno}`}
               data-qno={s.qno}
-              className={`${inputCls} min-w-[9rem]`}
+              aria-label={`Câu ${s.qno}`}
+              className="field w-44 py-0.5"
               value={values[s.qno!] ?? ''}
               disabled={disabled}
               onChange={(e) => onChange(s.qno!, e.target.value)}
@@ -260,7 +288,7 @@ export function GapSelectQuestion({
             </select>
           </span>
         ) : (
-          <span key={i}>{s.value}</span>
+          <Inline key={i} text={s.value} />
         )
       )}
     </div>
@@ -280,25 +308,26 @@ export function GapTableQuestion({
   disabled?: boolean;
 }): JSX.Element {
   const t = block.table;
-  if (!t) return <p className="text-red-600">Không dựng được bảng.</p>;
+  if (!t) return <p className="text-bad">Không dựng được bảng.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-base">
         <thead>
           <tr>
             {t.header.map((cell, i) => (
-              <th key={i} className="border border-slate-300 bg-slate-100 px-2 py-1 text-left font-semibold">
-                <Segments segments={cell} values={values} onChange={onChange} {...(disabled ? { disabled } : {})} />
+              <th key={i} className="border border-line bg-surface-3 px-2 py-1.5 text-left font-semibold">
+                {/* ô trong bảng hẹp → input ngắn hơn mặc định, đỡ đẩy chữ xuống dòng */}
+                <Segments segments={cell} values={values} onChange={onChange} width="w-28" {...(disabled ? { disabled } : {})} />
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {t.rows.map((row, r) => (
-            <tr key={r}>
+            <tr key={r} className="even:bg-surface-3/40">
               {row.map((cell, c) => (
-                <td key={c} className="border border-slate-300 px-2 py-1 align-top">
-                  <Segments segments={cell} values={values} onChange={onChange} {...(disabled ? { disabled } : {})} />
+                <td key={c} className="border border-line px-2 py-1.5 align-top">
+                  <Segments segments={cell} values={values} onChange={onChange} width="w-28" {...(disabled ? { disabled } : {})} />
                 </td>
               ))}
             </tr>
@@ -325,11 +354,11 @@ export function AsciiQuestion({
   onChange: (qno: number, v: string) => void;
   disabled?: boolean;
 }): JSX.Element {
-  if (!block.raw) return <p className="text-red-600">Không tìm thấy khối sơ đồ.</p>;
+  if (!block.raw) return <p className="text-bad">Không tìm thấy khối sơ đồ.</p>;
   const lines = block.raw.split('\n');
   return (
-    <div className="overflow-x-auto">
-      <pre className="whitespace-pre font-mono text-[13px] leading-6 text-slate-800">
+    <div className="overflow-x-auto rounded-md border border-line bg-surface-3/50 p-3">
+      <pre className="whitespace-pre font-mono text-sm leading-6 text-ink">
         {lines.map((line, i) => {
           const segs = splitAscii(line, block.range);
           return (
@@ -343,8 +372,11 @@ export function AsciiQuestion({
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
-                    /* 6 ký tự = đúng độ rộng của `______`, nên khung không lệch */
-                    className="inline-block w-[6ch] border-b-2 border-sky-600 bg-sky-50 px-0 text-center font-mono text-[13px] focus:outline-none focus:ring-1 focus:ring-sky-400 disabled:bg-slate-100"
+                    aria-label={`Câu ${s.qno}`}
+                    /* 6 ký tự = đúng độ rộng của `______`, nên khung không lệch.
+                       Đây là ngoại lệ duy nhất được phép dùng giá trị thô
+                       (CLAUDE.md §13.1) vì nó là ràng buộc hình học. */
+                    className="inline-block w-[6ch] border-0 border-b-2 border-accent bg-accent-soft px-0 text-center font-mono text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent disabled:bg-surface-3"
                     value={values[s.qno!] ?? ''}
                     disabled={disabled}
                     onChange={(e) => onChange(s.qno!, e.target.value)}
@@ -382,38 +414,75 @@ function splitAscii(line: string, range: [number, number]): Segment[] {
   return out;
 }
 
+/** Lựa chọn của mcq-single / mcq-multi — cùng một hình dạng, khác nhau ở input. */
+function ChoiceList({
+  qno,
+  options,
+  kind,
+  isOn,
+  isLocked,
+  onPick,
+  disabled,
+}: {
+  qno: number;
+  options: Option[];
+  kind: 'radio' | 'checkbox';
+  isOn: (letter: string) => boolean;
+  isLocked: (letter: string) => boolean;
+  onPick: (letter: string) => void;
+  disabled?: boolean;
+}): JSX.Element {
+  return (
+    <ul className="mt-1.5 space-y-0.5 pl-10">
+      {options.map((o) => {
+        const on = isOn(o.letter);
+        const locked = isLocked(o.letter);
+        return (
+          <li key={o.letter}>
+            <label
+              className={
+                'flex items-start gap-2 rounded px-2 py-1 text-read transition-colors ' +
+                (on ? 'bg-accent-soft ring-1 ring-accent-line ' : locked ? 'opacity-55 ' : 'hover:bg-surface-3 ') +
+                (disabled || locked ? 'cursor-not-allowed' : 'cursor-pointer')
+              }
+            >
+              <input
+                type={kind}
+                className="mt-1.5 shrink-0 accent-accent"
+                {...(kind === 'radio' ? { name: `q${qno}` } : {})}
+                checked={on}
+                disabled={disabled || locked}
+                onChange={() => onPick(o.letter)}
+              />
+              <span>
+                <b className="mr-1.5">{o.letter}</b>
+                <Inline text={o.text} />
+              </span>
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** mcq-single */
 export function McqSingleQuestion({ question, value, onChange, disabled }: QProps): JSX.Element {
   return (
-    <div id={`q-${question.qno}`} data-qno={question.qno} className="space-y-1">
-      <p className="font-medium">
-        <span className="mr-2 font-semibold text-slate-500">{question.qno}.</span>
-        {question.prompt}
+    <div id={`q-${question.qno}`} data-qno={question.qno}>
+      <p className="flex gap-3 font-medium">
+        <Qno n={`${question.qno}.`} />
+        <Inline text={question.prompt} className="flex-1 text-read" />
       </p>
-      <div className="space-y-1 pl-7">
-        {(question.options ?? []).map((o) => (
-          <label
-            key={o.letter}
-            className={
-              'flex cursor-pointer items-start gap-2 rounded px-2 py-1 ' +
-              (value === o.letter ? 'bg-sky-50 ring-1 ring-sky-300' : 'hover:bg-slate-50')
-            }
-          >
-            <input
-              type="radio"
-              className="mt-1"
-              name={`q${question.qno}`}
-              checked={value === o.letter}
-              disabled={disabled}
-              onChange={() => onChange(question.qno, o.letter)}
-            />
-            <span>
-              <b className="mr-1">{o.letter}</b>
-              {o.text}
-            </span>
-          </label>
-        ))}
-      </div>
+      <ChoiceList
+        qno={question.qno}
+        options={question.options ?? []}
+        kind="radio"
+        isOn={(l) => value === l}
+        isLocked={() => false}
+        onPick={(l) => onChange(question.qno, l)}
+        {...(disabled ? { disabled } : {})}
+      />
     </div>
   );
 }
@@ -439,48 +508,31 @@ export function McqMultiQuestion({ question, value, onChange, disabled }: QProps
   // Một item chiếm nhiều số câu → phải có mỏ neo cho TỪNG số, nếu không
   // bấm "80" ở thanh điều hướng dưới sẽ không nhảy đi đâu cả.
   const anchors = question.qnos ?? [question.qno];
+  const label = question.qnos
+    ? `${question.qnos[0]}–${question.qnos[question.qnos.length - 1]}.`
+    : `${question.qno}.`;
 
   return (
-    <div className="space-y-1">
+    <div>
       {anchors.map((n) => (
         <span key={n} id={`q-${n}`} data-qno={n} className="block h-0" />
       ))}
-      <p className="font-medium">
-        <span className="mr-2 font-semibold text-slate-500">
-          {question.qnos ? `${question.qnos[0]}–${question.qnos[question.qnos.length - 1]}.` : `${question.qno}.`}
-        </span>
-        {question.prompt}
+      <p className="flex gap-3 font-medium">
+        <span className="shrink-0 font-semibold tabular-nums text-ink">{label}</span>
+        <Inline text={question.prompt} className="flex-1 text-read" />
       </p>
-      <p className="pl-7 text-xs text-slate-500">
-        Chọn {limit} phương án · đã chọn {picked.length}/{limit}
+      <p className="mt-0.5 pl-10 text-sm text-ink-2">
+        Chọn {limit} phương án — đã chọn {picked.length}/{limit}
       </p>
-      <div className="space-y-1 pl-7">
-        {(question.options ?? []).map((o) => {
-          const on = picked.includes(o.letter);
-          return (
-            <label
-              key={o.letter}
-              className={
-                'flex items-start gap-2 rounded px-2 py-1 ' +
-                (on ? 'bg-sky-50 ring-1 ring-sky-300' : full ? 'opacity-60' : 'hover:bg-slate-50') +
-                (disabled || (full && !on) ? ' cursor-not-allowed' : ' cursor-pointer')
-              }
-            >
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={on}
-                disabled={disabled || (full && !on)}
-                onChange={() => toggle(o.letter)}
-              />
-              <span>
-                <b className="mr-1">{o.letter}</b>
-                {o.text}
-              </span>
-            </label>
-          );
-        })}
-      </div>
+      <ChoiceList
+        qno={question.qno}
+        options={question.options ?? []}
+        kind="checkbox"
+        isOn={(l) => picked.includes(l)}
+        isLocked={(l) => full && !picked.includes(l)}
+        onPick={toggle}
+        {...(disabled ? { disabled } : {})}
+      />
     </div>
   );
 }
@@ -488,8 +540,9 @@ export function McqMultiQuestion({ question, value, onChange, disabled }: QProps
 /** Dạng lạ → vẫn hiện, ô nhập text, kèm cảnh báo (CLAUDE.md §4.3). */
 export function UnknownQuestion(props: QProps): JSX.Element {
   return (
-    <div className="rounded border border-amber-300 bg-amber-50 p-2">
-      <p className="mb-1 text-xs font-semibold text-amber-800">
+    <div className="rounded-md border border-warn-line bg-warn-soft p-2">
+      <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-warn">
+        <span aria-hidden="true">⚠</span>
         Dạng chưa nhận diện được — hiển thị dạng ô nhập text.
       </p>
       <ShortAnswerQuestion {...props} />
