@@ -56,8 +56,9 @@ describe('TestPicker', () => {
   it('liệt kê mọi đề, không có banner lỗi parse', () => {
     const html = renderToStaticMarkup(<TestPicker tests={tests} onStart={noop} onResume={noop} />);
     for (const t of tests) expect(html).toContain(t.title);
-    expect(html).not.toContain('Có đề parse lỗi');
-    expect(html).toContain('Bắt đầu');
+    expect(html).not.toContain('Có đề chưa parse sạch');
+    // mỗi đề có đúng một nút mở đề (tiêu đề thẻ chính là nút)
+    for (const t of tests) expect(html).toContain(`>${t.title}</button>`);
   });
 });
 
@@ -71,8 +72,6 @@ describe('QuestionPane — mọi dạng render được', () => {
         onChange={noop}
         onFlag={noop}
         showStrategy
-        fontSize={1}
-        paper="white"
       />
     );
     // mỗi khối có tiêu đề dải câu
@@ -87,11 +86,11 @@ describe('QuestionPane — mọi dạng render được', () => {
   it('chế độ Thi KHÔNG hiện chiến thuật; chế độ Luyện thì có', () => {
     const exam = renderToStaticMarkup(
       <QuestionPane blocks={t0.blocks} values={{}} flagged={new Set()} onChange={noop} onFlag={noop}
-        showStrategy={false} fontSize={1} paper="white" />
+        showStrategy={false} />
     );
     const practice = renderToStaticMarkup(
       <QuestionPane blocks={t0.blocks} values={{}} flagged={new Set()} onChange={noop} onFlag={noop}
-        showStrategy fontSize={1} paper="white" />
+        showStrategy />
     );
     expect(exam).not.toContain('Chiến thuật');
     expect(practice).toContain('Chiến thuật');
@@ -100,7 +99,7 @@ describe('QuestionPane — mọi dạng render được', () => {
   it('khung ASCII của gap-flow/gap-diagram giữ nguyên trong <pre>', () => {
     const html = renderToStaticMarkup(
       <QuestionPane blocks={t0.blocks} values={{}} flagged={new Set()} onChange={noop} onFlag={noop}
-        showStrategy={false} fontSize={1} paper="white" />
+        showStrategy={false} />
     );
     expect(html).toContain('<pre');
     expect(html).toContain('│'); // viền khung phải còn nguyên
@@ -125,8 +124,10 @@ describe('ExamShell', () => {
         setSession={noop} onSubmit={noop} onExit={noop}
         fontSize={1} setFontSize={noop} paper="white" setPaper={noop} />
     );
-    expect(html).toContain('120:00');
-    expect(html).not.toContain('Chế độ Luyện');
+    expect(html).toContain('2:00:00');
+    expect(html).toContain('Còn lại');
+    // chế độ Thi không được lộ bất cứ dấu vết nào của chế độ Luyện
+    expect(html).not.toContain('Chiến thuật');
   });
 
   it('thanh điều hướng dưới có đủ ô số cho mọi câu', () => {

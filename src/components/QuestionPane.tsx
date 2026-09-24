@@ -24,11 +24,7 @@ interface Props {
   disabled?: boolean;
   /** Chế độ Thi: KHÔNG hiện chiến thuật, không hiện instruction tiếng Việt */
   showStrategy: boolean;
-  fontSize: 0 | 1 | 2;
-  paper: 'white' | 'cream';
 }
-
-const SIZES = ['text-[13px]', 'text-[15px]', 'text-[17px]'] as const;
 
 export default function QuestionPane({
   blocks,
@@ -38,15 +34,9 @@ export default function QuestionPane({
   onFlag,
   disabled,
   showStrategy,
-  fontSize,
-  paper,
 }: Props): JSX.Element {
   return (
-    <div
-      className={`h-full overflow-y-auto px-5 py-4 ${SIZES[fontSize]} ${
-        paper === 'cream' ? 'bg-amber-50' : 'bg-white'
-      }`}
-    >
+    <div className="h-full overflow-y-auto bg-paper px-6 py-5">
       {blocks.map((b) => (
         <section key={b.typeIndex} id={`block-${b.typeIndex}`} className="mb-8">
           <h3 className="mb-1 border-b border-slate-300 pb-1 text-base font-bold">

@@ -2,6 +2,10 @@
  * Cột trái: bài đọc, cuộn độc lập.
  * Bôi đen chữ → menu nhỏ "Highlight / Note / Clear" (CLAUDE.md §6.2) —
  * chức năng này có thật trong đề thi máy nên không phải trang trí.
+ *
+ * Kiểu chữ theo CLAUDE.md §13.5: serif, căn trái, `--lh-read`, giới hạn
+ * `--measure`. Cỡ chữ và nền giấy thừa hưởng từ token do `ExamShell` đặt,
+ * pane không tự quản hai thứ đó nữa.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -12,11 +16,7 @@ interface Props {
   paragraphs: { label: string; text: string }[];
   highlights: Highlight[];
   onHighlights: (h: Highlight[]) => void;
-  fontSize: 0 | 1 | 2;
-  paper: 'white' | 'cream';
 }
-
-const SIZES = ['text-[13px]', 'text-[15px]', 'text-[17px]'] as const;
 
 /** Bọc mọi lần xuất hiện của các đoạn đã bôi vàng trong một paragraph. */
 function renderMarked(text: string, marks: Highlight[]): (string | JSX.Element)[] {
@@ -52,16 +52,13 @@ function renderMarked(text: string, marks: Highlight[]): (string | JSX.Element)[
   return parts;
 }
 
-export default function PassagePane({
-  title,
-  paragraphs,
-  highlights,
-  onHighlights,
-  fontSize,
-  paper,
-}: Props): JSX.Element {
+type Menu = { x: number; y: number; text: string; para: string };
+
+export default function PassagePane({ title, paragraphs, highlights, onHighlights }: Props): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; text: string; para: string } | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [noting, setNoting] = useState(false);
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     const onUp = (): void => {
@@ -69,75 +66,104 @@ export default function PassagePane({
       const text = sel?.toString() ?? '';
       if (!sel || !text.trim() || text.length > 400) {
         setMenu(null);
+        setNoting(false);
         return;
       }
       const node = sel.anchorNode;
       if (!node || !ref.current?.contains(node)) {
         setMenu(null);
+        setNoting(false);
         return;
       }
       const el = (node.nodeType === 3 ? node.parentElement : (node as HTMLElement))?.closest('[data-para]');
       const para = el?.getAttribute('data-para') ?? '';
       const r = sel.getRangeAt(0).getBoundingClientRect();
       const box = ref.current.getBoundingClientRect();
-      setMenu({ x: r.left - box.left + r.width / 2, y: r.top - box.top - 8, text, para });
+      setMenu({ x: r.left - box.left + r.width / 2, y: r.top - box.top - 8 + ref.current.scrollTop, text, para });
+      setNoting(false);
+      setNote('');
     };
     document.addEventListener('mouseup', onUp);
     return () => document.removeEventListener('mouseup', onUp);
   }, []);
 
-  const add = (note?: string): void => {
+  const close = (): void => {
+    setMenu(null);
+    setNoting(false);
+    setNote('');
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const add = (withNote?: string): void => {
     if (!menu) return;
     const next = highlights.filter((h) => h.text !== menu.text);
-    onHighlights([...next, { paragraph: menu.para, text: menu.text, ...(note ? { note } : {}) }]);
-    setMenu(null);
-    window.getSelection()?.removeAllRanges();
+    onHighlights([...next, { paragraph: menu.para, text: menu.text, ...(withNote ? { note: withNote } : {}) }]);
+    close();
   };
 
   const clear = (): void => {
     if (!menu) return;
     onHighlights(highlights.filter((h) => !menu.text.includes(h.text) && !h.text.includes(menu.text)));
-    setMenu(null);
-    window.getSelection()?.removeAllRanges();
+    close();
   };
 
   return (
-    <div
-      ref={ref}
-      className={`relative h-full overflow-y-auto px-5 py-4 ${SIZES[fontSize]} ${
-        paper === 'cream' ? 'bg-amber-50' : 'bg-white'
-      }`}
-    >
-      <h2 className="mb-3 font-serif text-lg font-bold">{title}</h2>
-      {paragraphs.map((p) => (
-        <div key={p.label} data-para={p.label} className="mb-4">
-          <div className="mb-1 font-bold">{p.label}</div>
-          <p className="whitespace-pre-wrap text-justify leading-relaxed">
-            {renderMarked(p.text, highlights.filter((h) => h.paragraph === p.label))}
-          </p>
-        </div>
-      ))}
+    <div ref={ref} className="relative h-full overflow-y-auto bg-paper px-6 py-5">
+      <div className="mx-auto max-w-measure">
+        <h2 className="mb-4 font-serif text-xl font-bold">{title}</h2>
+
+        {paragraphs.map((p) => (
+          <div key={p.label} data-para={p.label} className="mb-5">
+            <div className="mb-1 font-sans text-base font-bold text-ink-2">{p.label}</div>
+            {/* Căn trái, không justify: cột hẹp + từ dài sinh "sông" trắng (audit D1). */}
+            <p className="whitespace-pre-wrap font-serif text-read [text-wrap:pretty]">
+              {renderMarked(p.text, highlights.filter((h) => h.paragraph === p.label))}
+            </p>
+          </div>
+        ))}
+      </div>
 
       {menu && (
         <div
-          className="absolute z-30 -translate-x-1/2 -translate-y-full rounded-md border border-slate-300 bg-white p-1 shadow-lg"
+          className="absolute z-30 -translate-x-1/2 -translate-y-full rounded-md border border-line-strong bg-surface p-1 shadow-pop"
           style={{ left: menu.x, top: menu.y }}
         >
-          <button className="rounded px-2 py-1 text-xs hover:bg-yellow-100" onClick={() => add()}>
-            Highlight
-          </button>
-          <button
-            className="rounded px-2 py-1 text-xs hover:bg-amber-100"
-            onClick={() => {
-              const note = window.prompt('Ghi chú cho đoạn đã chọn:');
-              if (note !== null) add(note || undefined);
-            }}
-          >
-            Note
-          </button>
-          <button className="rounded px-2 py-1 text-xs hover:bg-slate-100" onClick={clear}>
-            Clear
-          </button>
+          {noting ? (
+            // Ghi chú nhập ngay tại chỗ, không dùng window.prompt (audit F6)
+            <form
+              className="flex items-center gap-1 p-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                add(note.trim() || undefined);
+              }}
+            >
+              <input
+                autoFocus
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setNoting(false)}
+                placeholder="Ghi chú…"
+                aria-label="Ghi chú cho đoạn đã chọn"
+                className="field w-48 text-base"
+              />
+              <button type="submit" className="btn btn-primary px-2 py-1 text-sm">
+                Lưu
+              </button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-0.5">
+              <button className="rounded px-2 py-1 text-base hover:bg-surface-3" onClick={() => add()}>
+                Highlight
+              </button>
+              <button className="rounded px-2 py-1 text-base hover:bg-surface-3" onClick={() => setNoting(true)}>
+                Note
+              </button>
+              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-line" />
+              <button className="rounded px-2 py-1 text-base text-ink-2 hover:bg-surface-3" onClick={clear}>
+                Clear
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

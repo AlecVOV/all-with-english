@@ -1,6 +1,10 @@
 /**
  * Khung thi: header + split pane kéo được + thanh điều hướng dưới
  * (CLAUDE.md §6.2).
+ *
+ * `data-read-size` và `data-paper` đặt ở phần tử gốc của khung, nên cỡ chữ vùng
+ * đọc và nền giấy áp cho **toàn khung** — header, dialog, thanh dưới — chứ không
+ * chỉ hai pane (CLAUDE.md §13.5).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,10 +27,16 @@ interface Props {
   setPaper: (p: 'white' | 'cream') => void;
 }
 
+/** `mm:ss`, đổi sang `h:mm:ss` khi từ một tiếng trở lên — 120 phút đọc thành
+ *  `2:00:00` chứ không phải `120:00` (audit D9). */
 const fmt = (s: number): string => {
-  const m = Math.max(0, Math.floor(s / 60));
-  const sec = Math.max(0, s % 60);
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  const t = Math.max(0, s);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(sec).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
 export default function ExamShell({
@@ -42,9 +52,9 @@ export default function ExamShell({
 }: Props): JSX.Element {
   const [split, setSplit] = useState(50);
   const [current, setCurrent] = useState<number | null>(null);
-  const [confirm, setConfirm] = useState(false);
   const dragging = useRef(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const blocks = useMemo(
     () => (session.onlyTypes ? test.blocks.filter((b) => session.onlyTypes!.includes(b.typeIndex)) : test.blocks),
@@ -115,6 +125,22 @@ export default function ExamShell({
     };
   }, []);
 
+  /** Mũi tên trái/phải chỉnh tỉ lệ, Home/End về 20/80 — thanh chia phải dùng
+   *  được bằng bàn phím như mọi điều khiển khác (audit D8). */
+  const onSplitKey = useCallback((e: React.KeyboardEvent): void => {
+    const step = e.shiftKey ? 10 : 2;
+    const map: Record<string, (v: number) => number> = {
+      ArrowLeft: (v) => v - step,
+      ArrowRight: (v) => v + step,
+      Home: () => 20,
+      End: () => 80,
+    };
+    const f = map[e.key];
+    if (!f) return;
+    e.preventDefault();
+    setSplit((v) => Math.min(80, Math.max(20, f(v))));
+  }, []);
+
   const setAnswer = useCallback(
     (qno: number, value: string) => {
       setSession({ ...session, answers: { ...session.answers, [qno]: value } });
@@ -148,83 +174,117 @@ export default function ExamShell({
   const danger = exam && session.seconds <= 300;
 
   return (
-    <div className="flex h-screen flex-col bg-slate-200">
-      {/* Header */}
-      <header className="flex items-center gap-4 border-b border-slate-400 bg-slate-800 px-4 py-2 text-white">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold">{session.candidate}</div>
-          <div className="truncate text-xs text-slate-300">{test.title}</div>
+    <div
+      data-read-size={fontSize}
+      data-paper={paper}
+      className="flex h-screen flex-col bg-surface-2 text-ink"
+    >
+      {/* ---- Header ---------------------------------------------- */}
+      <header className="on-chrome flex items-center gap-4 bg-chrome px-4 py-2 text-chrome-fg">
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold">{session.candidate}</div>
+          <div className="flex items-center gap-2 truncate text-sm text-chrome-fg-2">
+            <span className="truncate">{test.title}</span>
+            {!exam && (
+              <span className="shrink-0 rounded bg-study px-1.5 py-0.5 text-xs font-semibold text-white">
+                Luyện
+              </span>
+            )}
+          </div>
         </div>
 
-        <div
-          className={
-            'mx-auto rounded px-4 py-1 font-mono text-2xl tabular-nums transition-colors ' +
-            (danger ? 'bg-red-600' : warn ? 'bg-amber-500 text-slate-900' : 'bg-slate-700')
-          }
-          title={exam ? 'Thời gian còn lại' : 'Thời gian đã làm'}
-        >
-          {fmt(session.seconds)}
+        <div className="flex shrink-0 flex-col items-center">
+          <span className="text-xs text-chrome-fg-2">{exam ? 'Còn lại' : 'Đã làm'}</span>
+          <span
+            role="timer"
+            aria-live="off"
+            className={
+              'rounded px-3 py-0.5 font-mono text-2xl font-semibold tabular-nums transition-colors ' +
+              (danger ? 'bg-bad text-white' : warn ? 'bg-warn text-white' : 'bg-chrome-2 text-chrome-fg')
+            }
+          >
+            {fmt(session.seconds)}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          <div className="flex overflow-hidden rounded border border-slate-500">
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <div
+            role="radiogroup"
+            aria-label="Cỡ chữ"
+            className="flex overflow-hidden rounded border border-chrome-line"
+          >
             {([0, 1, 2] as const).map((n) => (
               <button
                 key={n}
+                type="button"
+                role="radio"
+                aria-checked={fontSize === n}
+                aria-label={['Cỡ chữ nhỏ', 'Cỡ chữ vừa', 'Cỡ chữ lớn'][n]}
                 onClick={() => setFontSize(n)}
-                className={`px-2 py-1 ${fontSize === n ? 'bg-slate-600' : 'hover:bg-slate-700'}`}
-                title="Cỡ chữ"
+                className={
+                  'w-8 py-1 font-serif leading-none ' +
+                  (['text-xs', 'text-base', 'text-lg'][n] ?? '') +
+                  (fontSize === n ? ' bg-chrome-2 font-bold' : ' hover:bg-chrome-2/60')
+                }
               >
-                {['A', 'A', 'A'][n]}
-                <span className={n === 0 ? 'text-[9px]' : n === 1 ? 'text-[11px]' : 'text-[13px]'} />
+                A
               </button>
             ))}
           </div>
+
           <button
+            type="button"
+            aria-pressed={paper === 'cream'}
             onClick={() => setPaper(paper === 'white' ? 'cream' : 'white')}
-            className="rounded border border-slate-500 px-2 py-1 hover:bg-slate-700"
-            title="Nền trắng / vàng nhạt"
+            className="rounded border border-chrome-line px-2 py-1 text-base hover:bg-chrome-2"
           >
             {paper === 'white' ? 'Nền trắng' : 'Nền vàng'}
           </button>
-          <button onClick={onExit} className="rounded border border-slate-500 px-2 py-1 hover:bg-slate-700">
+          <button
+            type="button"
+            onClick={onExit}
+            className="rounded border border-chrome-line px-2 py-1 text-base hover:bg-chrome-2"
+          >
             Thoát
           </button>
           <button
-            onClick={() => setConfirm(true)}
-            className="rounded bg-emerald-600 px-3 py-1 font-semibold hover:bg-emerald-500"
+            type="button"
+            onClick={() => dialogRef.current?.showModal()}
+            className="rounded bg-ok px-3 py-1 text-base font-semibold text-white hover:brightness-110"
           >
             Nộp bài
           </button>
         </div>
       </header>
 
-      {!exam && (
-        <div className="bg-emerald-700 px-4 py-1 text-xs text-white">
-          Chế độ Luyện — đồng hồ đếm lên, không ép giờ. Khối “Chiến thuật” của mỗi dạng hiện ngay trên câu hỏi.
-        </div>
-      )}
-
-      {/* Split pane */}
+      {/* ---- Split pane ------------------------------------------ */}
       <div ref={wrapRef} className="flex min-h-0 flex-1">
-        <div style={{ width: `${split}%` }} className="min-w-0 border-r border-slate-300">
+        <div style={{ width: `${split}%` }} className="min-w-0">
           <PassagePane
             title={test.passageTitle}
             paragraphs={test.paragraphs}
             highlights={session.highlights}
             onHighlights={(h: Highlight[]) => setSession({ ...session, highlights: h })}
-            fontSize={fontSize}
-            paper={paper}
           />
         </div>
+
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Tỉ lệ chia bài đọc và câu hỏi"
+          aria-valuenow={Math.round(split)}
+          aria-valuemin={20}
+          aria-valuemax={80}
+          tabIndex={0}
+          onKeyDown={onSplitKey}
           onMouseDown={() => {
             dragging.current = true;
             document.body.style.userSelect = 'none';
           }}
-          className="w-1.5 shrink-0 cursor-col-resize bg-slate-300 transition hover:bg-sky-400"
-          title="Kéo để chỉnh tỉ lệ"
+          className="w-1.5 shrink-0 cursor-col-resize bg-line transition-colors hover:bg-accent"
+          title="Kéo, hoặc dùng mũi tên trái/phải, để chỉnh tỉ lệ"
         />
+
         <div style={{ width: `${100 - split}%` }} className="min-w-0">
           <QuestionPane
             blocks={blocks}
@@ -233,8 +293,6 @@ export default function ExamShell({
             onChange={setAnswer}
             onFlag={toggleFlag}
             showStrategy={!exam}
-            fontSize={fontSize}
-            paper={paper}
           />
         </div>
       </div>
@@ -248,36 +306,66 @@ export default function ExamShell({
         onJump={jump}
       />
 
-      {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
-            <h3 className="mb-2 text-lg font-bold">Nộp bài?</h3>
-            <p className="mb-4 text-sm text-slate-700">
-              {unanswered > 0 ? (
-                <>
-                  Còn <b className="text-red-600">{unanswered}</b> câu chưa trả lời.
-                </>
-              ) : (
-                'Bạn đã trả lời tất cả các câu.'
-              )}
-            </p>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirm(false)} className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100">
-                Quay lại
-              </button>
-              <button
-                onClick={() => {
-                  setConfirm(false);
-                  onSubmit();
-                }}
-                className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500"
-              >
-                Nộp
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ---- Xác nhận nộp bài ------------------------------------ */}
+      <SubmitDialog
+        dialogRef={dialogRef}
+        unanswered={unanswered}
+        total={present.size}
+        onConfirm={() => {
+          dialogRef.current?.close();
+          onSubmit();
+        }}
+      />
     </div>
+  );
+}
+
+/**
+ * `<dialog>` mở bằng `showModal()`: trình duyệt lo sẵn bẫy focus, đóng bằng Esc
+ * và lớp phủ `::backdrop` (audit F5). `closedby="any"` thêm light-dismiss ở
+ * trình duyệt hỗ trợ; nơi chưa hỗ trợ thì thuộc tính bị bỏ qua, Esc vẫn chạy.
+ */
+function SubmitDialog({
+  dialogRef,
+  unanswered,
+  total,
+  onConfirm,
+}: {
+  dialogRef: React.RefObject<HTMLDialogElement>;
+  unanswered: number;
+  total: number;
+  onConfirm: () => void;
+}): JSX.Element {
+  return (
+    <dialog
+      ref={dialogRef}
+      /* `closedby="any"` thêm light-dismiss ở trình duyệt hỗ trợ; nơi chưa hỗ trợ
+         thì thuộc tính bị bỏ qua và Esc vẫn đóng được. */
+      closedby="any"
+      aria-labelledby="submit-title"
+      className="card m-auto w-full max-w-sm p-5 text-ink shadow-dialog backdrop:bg-black/45"
+    >
+      <h2 id="submit-title" className="text-lg font-bold">
+        Nộp bài?
+      </h2>
+      <p className="mt-2 text-base text-ink-2">
+        {unanswered > 0 ? (
+          <>
+            Còn <b className="font-semibold text-bad">{unanswered}</b> trên {total} câu chưa trả lời. Nộp rồi thì
+            không quay lại sửa được.
+          </>
+        ) : (
+          <>Đã trả lời đủ {total} câu.</>
+        )}
+      </p>
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" onClick={() => dialogRef.current?.close()} className="btn btn-quiet">
+          Quay lại làm tiếp
+        </button>
+        <button type="button" onClick={onConfirm} className="btn btn-go">
+          Nộp bài
+        </button>
+      </div>
+    </dialog>
   );
 }
