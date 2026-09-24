@@ -30,7 +30,9 @@ const vite = await createServer({
   appType: 'custom',
   logLevel: 'error',
 });
-const { parseTest, parseDiagnostics, coversExactly } = await vite.ssrLoadModule('/src/parser/index.ts');
+const { parseTest, parseDiagnostics, coversExactly, parseAnswerCell } = await vite.ssrLoadModule(
+  '/src/parser/index.ts'
+);
 
 /* ------------------------------------------------------------------ */
 const errors = [];
@@ -228,11 +230,24 @@ for (const name of files) {
 
   /* --- đáp án chính thức phải nằm trong wordLimit của chính khối nó ---
      Mâu thuẫn nội tại: đề tự ra một đáp án mà chính đề chấm là sai.
-     Đã bắt được một ca thật (W5 D11 câu 62, nhan đề 4 từ / limit 3 từ). */
+     Đã bắt được một ca thật (W5 D11 câu 62, nhan đề 4 từ / limit 3 từ).
+
+     Hai mức, tách bạch:
+       LỖI — KHÔNG biến thể nào vừa giới hạn ⇒ câu đó không ai làm đúng được.
+       NỢ  — đáp án **chính** vượt giới hạn, chỉ biến thể `(chấp nhận …)` cứu.
+             Đề vẫn làm được, nhưng người học đọc bảng đáp án thấy bản 3 từ
+             trong khi khối chỉ cho 2 từ — tự dạy mình một câu trả lời bị trừ.
+             Ca thật: W7 D12 câu 66 `Nagtso Tsultrim Gyalwa` / limit 2 từ. */
   {
     const words = (s) =>
       s.trim().toLowerCase().replace(/[‐-―−]/g, '-').replace(/\s+/g, ' ')
         .split(/[\s-]+/).filter(Boolean).length;
+    /* Bỏ hậu tố `(chấp nhận …)` rồi parse lại phần còn lại: đó đúng là đáp án
+       chính, và bung cả ngoặc tuỳ chọn `**(the) X**` như lúc chấm. */
+    const mainOf = (display) => {
+      const core = display.replace(/\(\s*chấp nhận\s+[^)]+\)/i, '').trim();
+      return { core, accepted: parseAnswerCell(core).accepted };
+    };
     for (const b of t.blocks) {
       const limit = b.wordLimitCount;
       if (!limit) continue;
@@ -241,6 +256,14 @@ for (const name of files) {
         if (!k) continue;
         if (!k.accepted.some((a) => words(a) <= limit)) {
           err(`Dạng ${b.typeIndex} câu ${n}: đáp án "${k.display}" vượt wordLimit ${limit} từ của chính khối`);
+          continue;
+        }
+        const main = mainOf(k.display);
+        if (main.accepted.length && !main.accepted.some((a) => words(a) <= limit)) {
+          debt(
+            `Dạng ${b.typeIndex} câu ${n}: đáp án chính "${main.core}" vượt wordLimit ${limit} từ ` +
+              'của chính khối — chỉ biến thể "(chấp nhận …)" mới vừa giới hạn'
+          );
         }
       }
     }
