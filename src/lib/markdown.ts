@@ -3,6 +3,24 @@ import { marked } from 'marked';
 
 marked.setOptions({ gfm: true, breaks: false });
 
+/**
+ * `<`, `>`, `&` trong đề phải hiện ra **thành chữ**, không thành thẻ HTML.
+ *
+ * `marked` escape ký tự lẻ trong văn bản thường (`a < b` → `a &lt; b`), nhưng
+ * cái gì trông giống thẻ thì nó thả nguyên xuống HTML — và mọi chỗ gọi `md()` /
+ * `mdInline()` đều đổ vào `dangerouslySetInnerHTML`. Corpus hiện không có ký tự
+ * nào như vậy, nhưng đề là **file người dùng tự thả vào `test/`** (CLAUDE.md
+ * §1), nên một dòng `<script>` hay `<img onerror=…>` trong một đề mới sẽ chạy
+ * thật. Nội dung đề là dữ liệu để đọc, không phải markup để thi hành.
+ *
+ * Đổi `renderer.html` — nhánh duy nhất `marked` trả HTML thô, dùng chung cho cả
+ * thẻ nằm giữa dòng lẫn khối HTML nguyên đoạn — thành bản đã escape.
+ */
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+marked.use({ renderer: { html: (html: string): string => escapeHtml(html) } });
+
 export function md(src: string | undefined): string {
   if (!src) return '';
   return marked.parse(src, { async: false }) as string;
