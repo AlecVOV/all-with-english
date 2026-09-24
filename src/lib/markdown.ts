@@ -9,6 +9,31 @@ export function md(src: string | undefined): string {
 }
 
 /**
+ * Render khối `intro` (các blockquote đầu file) thành markdown đọc được.
+ *
+ * Hai việc, cả hai đều thuần hiển thị:
+ *  1. bỏ dấu `> ` — đã hiện ở màn riêng rồi, không cần khung trích dẫn nữa;
+ *  2. chèn dòng trống sau một dòng **chỉ gồm chữ in đậm**.
+ *
+ * Việc (2) là bắt buộc: trong file thật dòng nhãn và câu đầu tiên nằm sát nhau
+ *
+ *     > **Cách dùng file này**
+ *     > Đây **không** phải một đề thi…
+ *
+ * nên sau khi bỏ `> `, markdown gộp hai dòng thành **một đoạn** và ra chuỗi dính
+ * liền "Cách dùng file này Đây không phải một đề thi…" (audit A2).
+ */
+export function mdIntro(src: string | undefined): string {
+  if (!src) return '';
+  return md(
+    src
+      .replace(/^>\s?/gm, '')
+      // dòng chỉ có `**…**` → tách thành đoạn riêng
+      .replace(/^(\*\*[^*\n]+\*\*)[ \t]*$/gm, '$1\n')
+  );
+}
+
+/**
  * Render markdown **inline** — cho những chuỗi một dòng nằm lọt trong câu:
  * `prompt`, `instruction`, `Option.text`, `AnswerKey.display`.
  *

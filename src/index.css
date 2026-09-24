@@ -54,7 +54,7 @@
   /* ---- Ô nhập ----------------------------------------------------- */
   .field {
     @apply rounded border border-line-field bg-surface px-2 py-1 text-ink;
-    @apply focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+    @apply focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-ring;
     @apply disabled:bg-surface-3 disabled:text-ink-3;
   }
 

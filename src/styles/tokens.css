@@ -38,6 +38,7 @@
   --c-accent-dk: #164a72; /* trạng thái hover */
   --c-accent-soft: #e8f1f8; /* nền chọn nhạt */
   --c-accent-line: #9cc0d9;
+  --c-accent-ring: #bcd6e8; /* vòng sáng quanh ô nhập đang focus */
 
   /* ---- Nhấn: nội dung học tập (Chiến thuật, ghi chú dạy học) ------- */
   --c-study: #14664a; /* 6.9:1 trên trắng */

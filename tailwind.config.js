@@ -43,6 +43,7 @@ export default {
           dk: 'var(--c-accent-dk)',
           soft: 'var(--c-accent-soft)',
           line: 'var(--c-accent-line)',
+          ring: 'var(--c-accent-ring)',
         },
         study: {
           DEFAULT: 'var(--c-study)',
