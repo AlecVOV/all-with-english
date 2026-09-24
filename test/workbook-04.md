@@ -621,7 +621,7 @@ Ghi số câu **sai** của cả hai lần vào bảng này:
 | a handful of | phr. | chỉ vài, một nhúm |
 | unreservedly | adv. | hoàn toàn, không dè dặt |
 | interpretative apparatus | n. | bộ khung diễn giải |
-| pilot (v.) | v. | thử nghiệm (chương trình) |
+| pilot | v. | thử nghiệm (chương trình) |
 | epistemology | n. | nhận thức luận |
 | dilute | v. | pha loãng, làm nhạt |
 | backbone | n. | xương sống, trụ cột |
