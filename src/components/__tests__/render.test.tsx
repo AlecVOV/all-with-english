@@ -72,6 +72,7 @@ describe('QuestionPane — mọi dạng render được', () => {
         onChange={noop}
         onFlag={noop}
         showStrategy
+        paragraphLabels={t.paragraphs.map((p) => p.label)}
       />
     );
     // mỗi khối có tiêu đề dải câu
@@ -83,14 +84,67 @@ describe('QuestionPane — mọi dạng render được', () => {
     }
   });
 
+  it.each(tests.map((t) => [t.id, t] as const))(
+    '%s: mọi <select> đều có lựa chọn để chọn, không chỉ có dấu gạch',
+    (_id, t) => {
+      // Matching Information không khai báo lựa chọn trong file — chúng là nhãn
+      // đoạn của bài đọc. Thiếu đường lui đó thì dropdown rỗng và người làm
+      // không trả lời được những câu ấy.
+      const html = renderToStaticMarkup(
+        <QuestionPane
+          blocks={t.blocks}
+          values={{}}
+          flagged={new Set()}
+          onChange={noop}
+          onFlag={noop}
+          showStrategy={false}
+          paragraphLabels={t.paragraphs.map((p) => p.label)}
+        />
+      );
+      for (const m of html.matchAll(/<select[^>]*data-qno="(\d+)"[^>]*>(.*?)<\/select>/gs)) {
+        const choices = [...m[2]!.matchAll(/<option value="([^"]*)"/g)].filter((o) => o[1] !== '');
+        expect(choices.length, `câu ${m[1]} có dropdown rỗng`).toBeGreaterThan(0);
+      }
+    }
+  );
+
+  it('mcq-multi: mỗi số câu giữ một chữ cái, không dồn cả hai vào một khoá', () => {
+    // grade() chấm từng số câu một. Nếu component dồn "B,D" vào khoá đầu và bỏ
+    // trống khoá sau thì trả lời ĐÚNG vẫn bị chấm sai — đã cắn thật một lần.
+    const b = t0.blocks.find((x) => x.kind === 'mcq-multi')!;
+    const q = b.questions[0]!;
+    const qnos = q.qnos!;
+    expect(qnos.length).toBeGreaterThan(1);
+
+    const values: Record<number, string> = {};
+    qnos.forEach((n, i) => (values[n] = ['B', 'D'][i]!));
+
+    const html = renderToStaticMarkup(
+      <QuestionPane
+        blocks={[b]}
+        values={values}
+        flagged={new Set()}
+        onChange={noop}
+        onFlag={noop}
+        showStrategy={false}
+        paragraphLabels={t0.paragraphs.map((p) => p.label)}
+      />
+    );
+    // hai ô đã tick ⇒ component đọc đúng một chữ cái cho mỗi số câu
+    const checked = [...html.matchAll(/<input type="checkbox"[^>]*checked[^>]*>/g)];
+    expect(checked.length).toBe(2);
+    // và mỗi số câu vẫn có mỏ neo riêng cho thanh điều hướng dưới
+    for (const n of qnos) expect(html).toContain(`data-qno="${n}"`);
+  });
+
   it('chế độ Thi KHÔNG hiện chiến thuật; chế độ Luyện thì có', () => {
     const exam = renderToStaticMarkup(
       <QuestionPane blocks={t0.blocks} values={{}} flagged={new Set()} onChange={noop} onFlag={noop}
-        showStrategy={false} />
+        showStrategy={false} paragraphLabels={t0.paragraphs.map((p) => p.label)} />
     );
     const practice = renderToStaticMarkup(
       <QuestionPane blocks={t0.blocks} values={{}} flagged={new Set()} onChange={noop} onFlag={noop}
-        showStrategy />
+        showStrategy paragraphLabels={t0.paragraphs.map((p) => p.label)} />
     );
     expect(exam).not.toContain('Chiến thuật');
     expect(practice).toContain('Chiến thuật');
@@ -99,7 +153,7 @@ describe('QuestionPane — mọi dạng render được', () => {
   it('khung ASCII của gap-flow/gap-diagram giữ nguyên trong <pre>', () => {
     const html = renderToStaticMarkup(
       <QuestionPane blocks={t0.blocks} values={{}} flagged={new Set()} onChange={noop} onFlag={noop}
-        showStrategy={false} />
+        showStrategy={false} paragraphLabels={t0.paragraphs.map((p) => p.label)} />
     );
     expect(html).toContain('<pre');
     expect(html).toContain('│'); // viền khung phải còn nguyên

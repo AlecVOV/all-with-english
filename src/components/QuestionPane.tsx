@@ -1,6 +1,6 @@
 /** Cột phải: các khối câu hỏi, cuộn độc lập. */
 
-import type { QuestionBlock } from '../parser/types';
+import type { Option, QuestionBlock } from '../parser/types';
 import { md, mdInline } from '../lib/markdown';
 import {
   AsciiQuestion,
@@ -20,10 +20,14 @@ interface Props {
   values: Record<number, string>;
   flagged: Set<number>;
   onChange: (qno: number, v: string) => void;
+  /** ghi nhiều số câu trong một lần cập nhật — mcq-multi cần (xem ExamShell) */
+  onChangeMany?: (updates: Record<number, string>) => void;
   onFlag: (qno: number) => void;
   disabled?: boolean;
   /** Chế độ Thi: KHÔNG hiện chiến thuật, không hiện instruction tiếng Việt */
   showStrategy: boolean;
+  /** nhãn đoạn của bài đọc — lựa chọn của Matching Information (xem fallbackOptions) */
+  paragraphLabels: string[];
 }
 
 /** Dạng nào dùng chung một danh sách lựa chọn hiện trên đầu khối.
@@ -45,10 +49,16 @@ export default function QuestionPane({
   values,
   flagged,
   onChange,
+  onChangeMany,
   onFlag,
   disabled,
   showStrategy,
+  paragraphLabels,
 }: Props): JSX.Element {
+  /* Lựa chọn của Matching Information không nằm trong file đề: nó là nhãn đoạn
+     của chính bài đọc. Suy lúc chạy, không hardcode A–H (CLAUDE.md §10). */
+  const paragraphOptions: Option[] = paragraphLabels.map((letter) => ({ letter, text: letter }));
+
   return (
     <div className="h-full overflow-y-auto bg-paper px-6 py-5">
       {blocks.map((b) => (
@@ -81,7 +91,7 @@ export default function QuestionPane({
             <ul className="mt-3 space-y-1 rounded-md border border-line bg-surface-3 p-3 text-base">
               {b.options.map((o) => (
                 <li key={o.letter} className="flex gap-2">
-                  <b className="w-5 shrink-0 text-right">{o.letter}</b>
+                  <b className="w-5 shrink-0 text-right">{o.letter}</b>{' '}
                   <span dangerouslySetInnerHTML={{ __html: mdInline(o.text) }} />
                 </li>
               ))}
@@ -103,6 +113,8 @@ export default function QuestionPane({
                         question={q}
                         values={values}
                         onChange={onChange}
+                        {...(onChangeMany ? { onChangeMany } : {})}
+                        fallbackOptions={paragraphOptions}
                         {...(disabled ? { disabled } : {})}
                       />
                     </div>
@@ -212,14 +224,18 @@ function Renderer(props: {
   question: QuestionBlock['questions'][number];
   values: Record<number, string>;
   onChange: (qno: number, v: string) => void;
+  onChangeMany?: (updates: Record<number, string>) => void;
   disabled?: boolean;
+  fallbackOptions: Option[];
 }): JSX.Element {
-  const { block, question, values, onChange, disabled } = props;
+  const { block, question, values, onChange, onChangeMany, disabled, fallbackOptions } = props;
   const one = {
     block,
     question,
     value: values[question.qno] ?? '',
     onChange,
+    ...(onChangeMany ? { onChangeMany } : {}),
+    fallbackOptions,
     ...(disabled ? { disabled } : {}),
   };
   switch (block.kind) {
@@ -240,7 +256,7 @@ function Renderer(props: {
     case 'mcq-single':
       return <McqSingleQuestion {...one} />;
     case 'mcq-multi':
-      return <McqMultiQuestion {...one} />;
+      return <McqMultiQuestion {...one} values={values} />;
     default:
       return <UnknownQuestion {...one} />;
   }

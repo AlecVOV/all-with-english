@@ -465,7 +465,7 @@ function PromptOf({ test, qno }: { test: LoadedTest; qno: number }): JSX.Element
             <ul className="mt-1 space-y-0.5 text-sm text-ink-2">
               {q.options.map((o) => (
                 <li key={o.letter}>
-                  <b className="mr-1">{o.letter}</b>
+                  <b className="mr-1">{o.letter}</b>{' '}
                   <span dangerouslySetInnerHTML={{ __html: mdInline(o.text) }} />
                 </li>
               ))}

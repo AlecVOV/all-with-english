@@ -67,19 +67,13 @@ export default function ExamShell({
     return s;
   }, [blocks]);
 
+  // Mọi dạng, kể cả mcq-multi, đều ghi MỘT giá trị cho MỘT số câu
+  // (xem McqMultiQuestion), nên không cần tách chuỗi gì ở đây nữa.
   const answered = useMemo(() => {
     const s = new Set<number>();
-    for (const [k, v] of Object.entries(session.answers)) {
-      if (!v.trim()) continue;
-      const n = Number(k);
-      s.add(n);
-      // mcq-multi: một ô trả lời phủ nhiều số câu
-      const b = blocks.find((x) => x.range[0] <= n && n <= x.range[1]);
-      const q = b?.questions.find((x) => x.qno === n);
-      if (q?.qnos && v.split(',').filter(Boolean).length === q.qnos.length) q.qnos.forEach((x) => s.add(x));
-    }
+    for (const [k, v] of Object.entries(session.answers)) if (v.trim()) s.add(Number(k));
     return s;
-  }, [session.answers, blocks]);
+  }, [session.answers]);
 
   const unanswered = [...present].filter((n) => !answered.has(n)).length;
 
@@ -145,6 +139,22 @@ export default function ExamShell({
     (qno: number, value: string) => {
       setSession({ ...session, answers: { ...session.answers, [qno]: value } });
       setCurrent(qno);
+    },
+    [session, setSession]
+  );
+
+  /**
+   * Ghi nhiều số câu trong MỘT lần cập nhật.
+   *
+   * mcq-multi phải đặt một chữ cái cho mỗi số câu nó chiếm. Gọi `setAnswer` hai
+   * lần liên tiếp thì lần sau dựng từ `session` cũ trong closure và xoá mất lần
+   * trước — nên phải gộp lại thành một lần.
+   */
+  const setAnswers = useCallback(
+    (updates: Record<number, string>) => {
+      setSession({ ...session, answers: { ...session.answers, ...updates } });
+      const first = Object.keys(updates)[0];
+      if (first !== undefined) setCurrent(Number(first));
     },
     [session, setSession]
   );
@@ -292,8 +302,10 @@ export default function ExamShell({
             values={session.answers}
             flagged={new Set(session.flagged)}
             onChange={setAnswer}
+            onChangeMany={setAnswers}
             onFlag={toggleFlag}
             showStrategy={!exam}
+            paragraphLabels={test.paragraphs.map((p) => p.label)}
           />
         </div>
       </div>

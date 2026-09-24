@@ -21,6 +21,15 @@ export interface QProps {
   disabled?: boolean;
   /** đánh dấu ô đang được chọn ở thanh điều hướng */
   activeQno?: number;
+  /**
+   * Danh sách chữ cái dùng khi khối không tự khai báo lựa chọn.
+   * Matching Information hỏi "đoạn nào chứa thông tin sau" — lựa chọn chính là
+   * nhãn đoạn của bài đọc, nên file đề không liệt kê lại. Không có đường lui này
+   * thì dropdown rỗng và mấy câu đó không trả lời được.
+   */
+  fallbackOptions?: Option[];
+  /** ghi nhiều số câu trong một lần cập nhật — mcq-multi cần */
+  onChangeMany?: (updates: Record<number, string>) => void;
 }
 
 /** Chuỗi một dòng từ file đề → HTML inline. */
@@ -142,8 +151,16 @@ export function LetterSelect({
  * ================================================================== */
 
 /** matching-headings · matching-information · matching-features · matching-endings */
-export function MatchingQuestion({ block, question, value, onChange, disabled }: QProps): JSX.Element {
-  const opts = question.options ?? block.options ?? [];
+export function MatchingQuestion({
+  block,
+  question,
+  value,
+  onChange,
+  disabled,
+  fallbackOptions,
+}: QProps): JSX.Element {
+  const declared = question.options ?? block.options ?? [];
+  const opts = declared.length ? declared : (fallbackOptions ?? []);
   return (
     <div className="flex items-center gap-3">
       <Qno n={question.qno} />
@@ -469,7 +486,9 @@ function ChoiceList({
                 onChange={() => onPick(o.letter)}
               />
               <span>
-                <b className="mr-1.5">{o.letter}</b>
+                {/* dấu cách là ký tự thật, không phải margin: nếu không, text
+                    content dính thành "AIt was…" và screen reader đọc sai. */}
+                <b className="mr-1.5">{o.letter}</b>{' '}
                 <Inline text={o.text} />
               </span>
             </label>
@@ -505,30 +524,50 @@ export function McqSingleQuestion({ question, value, onChange, disabled }: QProp
  * mcq-multi — một item chiếm nhiều số câu. Chặn không cho chọn quá số lượng
  * ghi trong đề (CLAUDE.md §4.4).
  */
-export function McqMultiQuestion({ question, value, onChange, disabled }: QProps): JSX.Element {
-  const limit = question.selectCount ?? question.qnos?.length ?? 2;
-  const picked = value ? value.split(',').filter(Boolean) : [];
-  const full = picked.length >= limit;
-
-  const toggle = (letter: string): void => {
-    const next = picked.includes(letter)
-      ? picked.filter((x) => x !== letter)
-      : full
-        ? picked
-        : [...picked, letter];
-    onChange(question.qno, next.sort().join(','));
-  };
-
+export function McqMultiQuestion({
+  question,
+  values,
+  onChange,
+  onChangeMany,
+  disabled,
+}: Omit<QProps, 'value'> & { values: Record<number, string> }): JSX.Element {
   // Một item chiếm nhiều số câu → phải có mỏ neo cho TỪNG số, nếu không
   // bấm "80" ở thanh điều hướng dưới sẽ không nhảy đi đâu cả.
-  const anchors = question.qnos ?? [question.qno];
-  const label = question.qnos
-    ? `${question.qnos[0]}–${question.qnos[question.qnos.length - 1]}.`
-    : `${question.qno}.`;
+  const qnos = question.qnos ?? [question.qno];
+  const limit = question.selectCount ?? qnos.length;
+
+  /*
+   * MỘT CHỮ CÁI CHO MỖI SỐ CÂU.
+   *
+   * `grade()` chấm từng số câu một: nó đọc `answers[79]` và `answers[80]` rồi so
+   * với `test.answers[79]` / `test.answers[80]` — cả hai đều nhận tập {B, D}.
+   * Trước đây component gom cả hai lựa chọn thành "B,D" rồi nhét hết vào khoá 79
+   * và bỏ trống 80, nên trả lời ĐÚNG vẫn bị chấm sai ở 79 và "bỏ trống" ở 80.
+   * Ghi tách ra thì đúng cả hai được 2 điểm, đúng một được 1 điểm — vừa khớp
+   * CLAUDE.md §7, vừa không cần đụng vào grading.
+   */
+  const picked = qnos.map((n) => values[n] ?? '').filter(Boolean);
+  const full = picked.length >= limit;
+
+  const write = (letters: string[]): void => {
+    const sorted = [...letters].sort();
+    const updates: Record<number, string> = {};
+    qnos.forEach((n, i) => (updates[n] = sorted[i] ?? ''));
+    // một lần cập nhật cho cả nhóm; gọi onChange nhiều lần sẽ ghi đè lẫn nhau
+    if (onChangeMany) onChangeMany(updates);
+    else for (const [n, v] of Object.entries(updates)) onChange(Number(n), v);
+  };
+
+  const toggle = (letter: string): void => {
+    if (picked.includes(letter)) write(picked.filter((x) => x !== letter));
+    else if (!full) write([...picked, letter]);
+  };
+
+  const label = question.qnos ? `${qnos[0]}–${qnos[qnos.length - 1]}.` : `${question.qno}.`;
 
   return (
     <div>
-      {anchors.map((n) => (
+      {qnos.map((n) => (
         <span key={n} id={`q-${n}`} data-qno={n} className="block h-0" />
       ))}
       <p className="flex gap-3 font-medium">
