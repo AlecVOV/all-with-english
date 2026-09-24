@@ -1,16 +1,9 @@
-<!-- Sinh bởi scripts/make-prompt.mjs từ prompts/workbook-generator.md v1.1
-     KHÔNG sửa tay file này. Spec đổi thì chạy: node scripts/make-prompt.mjs --refresh -->
-
-=== BEGIN PROMPT ===
-
 ## VARIABLES
 
 TOPIC = the life of Tsongkhapa Lobzang Drakpa
 WORKBOOK_ID = 8
 L1 = Vietnamese
 
-(Example: TOPIC = "the global spread of coffee cultivation";
- WORKBOOK_ID = 6; L1 = Vietnamese)
 
 ## ROLE
 
