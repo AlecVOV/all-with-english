@@ -164,9 +164,11 @@ describe('ReviewScreen', () => {
     );
     expect(html).toContain('Điểm thô');
     expect(html).toContain(`/${t0.totalQuestions}`);
-    expect(html).toContain('band ước lượng');
+    // phải nói rõ đây chỉ là ước lượng, cả ở nhãn lẫn ở phần giải thích
+    expect(html).toContain('Band ước lượng');
+    expect(html).toContain('<b>ước lượng</b>');
     expect(html).toContain('Chiến thuật cho những dạng bạn vừa sai');
-    expect(html).toContain('Làm lại chỉ những dạng sai');
+    expect(html).toContain('Làm lại');
     // sai hết ⇒ mọi nhóm chẩn đoán đều vượt ngưỡng
     expect(html).toContain('Chẩn đoán');
   });

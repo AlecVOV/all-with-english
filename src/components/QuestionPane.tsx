@@ -178,7 +178,8 @@ function ReviewFlag({
 function Strategy({ markdown }: { markdown: string }): JSX.Element {
   return (
     <details open className="study-box mt-3">
-      <summary className="cursor-pointer select-none px-3 py-2 text-base font-semibold text-study marker:text-study">
+      <summary className="summary-row px-3 py-2 text-base font-semibold text-study">
+        <span aria-hidden="true" className="chev">▶</span>
         Chiến thuật
       </summary>
       <div
