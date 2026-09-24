@@ -1,7 +1,7 @@
 /** Cột phải: các khối câu hỏi, cuộn độc lập. */
 
 import type { QuestionBlock } from '../parser/types';
-import { md } from '../lib/markdown';
+import { md, mdInline } from '../lib/markdown';
 import {
   AsciiQuestion,
   GapSelectQuestion,
@@ -26,6 +26,20 @@ interface Props {
   showStrategy: boolean;
 }
 
+/** Dạng nào dùng chung một danh sách lựa chọn hiện trên đầu khối.
+ *  `gap-select` có trong danh sách này: trong đề thật danh sách từ luôn hiện,
+ *  không bắt người làm mở từng dropdown mới biết có những từ nào (audit E1). */
+const SHARED_OPTIONS: QuestionBlock['kind'][] = [
+  'matching-headings',
+  'matching-features',
+  'matching-endings',
+  'gap-select',
+];
+
+/** Các dạng gom hết chỗ trống vào một khối chung (bảng / sơ đồ ASCII),
+ *  nên checkbox Review xếp gọn ở cuối khối thay vì cạnh từng câu. */
+const GROUPED: QuestionBlock['kind'][] = ['gap-table', 'gap-flow', 'gap-diagram'];
+
 export default function QuestionPane({
   blocks,
   values,
@@ -38,90 +52,72 @@ export default function QuestionPane({
   return (
     <div className="h-full overflow-y-auto bg-paper px-6 py-5">
       {blocks.map((b) => (
-        <section key={b.typeIndex} id={`block-${b.typeIndex}`} className="mb-8">
-          <h3 className="mb-1 border-b border-slate-300 pb-1 text-base font-bold">
+        <section key={b.typeIndex} id={`block-${b.typeIndex}`} className="mb-10 last:mb-2">
+          <h3 className="flex flex-wrap items-baseline gap-x-2 border-b-2 border-ink pb-1 text-lg font-bold">
             Questions {b.range[0]}–{b.range[1]}
-            <span className="ml-2 text-sm font-normal text-slate-500">{b.typeName}</span>
+            <span className="text-base font-normal text-ink-2">{b.typeName}</span>
           </h3>
 
-          {b.instruction && <p className="my-2 italic text-slate-700">{b.instruction}</p>}
-
-          {showStrategy && b.strategy && (
-            <details open className="my-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2">
-              <summary className="cursor-pointer text-sm font-semibold text-emerald-900">
-                Chiến thuật
-              </summary>
-              <div
-                className="prose-md mt-1 text-sm text-emerald-950"
-                dangerouslySetInnerHTML={{ __html: md(stripLabel(b.strategy)) }}
-              />
-            </details>
+          {b.instruction && (
+            <p
+              className="mt-2 text-read italic text-ink-2"
+              dangerouslySetInnerHTML={{ __html: mdInline(b.instruction) }}
+            />
           )}
 
-          {b.caption && <p className="my-2 font-semibold">{b.caption}</p>}
+          {showStrategy && b.strategy && <Strategy markdown={b.strategy} />}
+
+          {b.caption && (
+            <p
+              className="mt-3 font-semibold"
+              dangerouslySetInnerHTML={{ __html: mdInline(b.caption) }}
+            />
+          )}
 
           {b.kind === 'tfng' && <FixedOptions labels={['TRUE', 'FALSE', 'NOT GIVEN']} />}
           {b.kind === 'ynng' && <FixedOptions labels={['YES', 'NO', 'NOT GIVEN']} />}
 
-          {/* Danh sách lựa chọn dùng chung */}
-          {b.options && ['matching-headings', 'matching-features', 'matching-endings'].includes(b.kind) && (
-            <ul className="my-2 space-y-0.5 rounded border border-slate-300 bg-slate-50 p-3 text-sm">
+          {b.options && SHARED_OPTIONS.includes(b.kind) && (
+            <ul className="mt-3 space-y-1 rounded-md border border-line bg-surface-3 p-3 text-base">
               {b.options.map((o) => (
-                <li key={o.letter}>
-                  <b className="mr-2">{o.letter}</b>
-                  {o.text}
+                <li key={o.letter} className="flex gap-2">
+                  <b className="w-5 shrink-0 text-right">{o.letter}</b>
+                  <span dangerouslySetInnerHTML={{ __html: mdInline(o.text) }} />
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="space-y-2">
+          <div className="mt-3">
             {b.kind === 'gap-table' ? (
               <GapTableQuestion block={b} values={values} onChange={onChange} {...(disabled ? { disabled } : {})} />
             ) : b.kind === 'gap-flow' || b.kind === 'gap-diagram' ? (
               <AsciiQuestion block={b} values={values} onChange={onChange} {...(disabled ? { disabled } : {})} />
             ) : (
-              b.questions.map((q) => (
-                <div key={q.qno} className="group flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <Renderer
-                      block={b}
-                      question={q}
-                      values={values}
-                      onChange={onChange}
-                      {...(disabled ? { disabled } : {})}
-                    />
-                  </div>
-                  <label
-                    title="Đánh dấu để xem lại"
-                    className="mt-0.5 flex shrink-0 cursor-pointer items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={flagged.has(q.qno)}
-                      onChange={() => onFlag(q.qno)}
-                      className="h-3 w-3"
-                    />
-                    Review
-                  </label>
-                </div>
-              ))
+              <ul className="divide-y divide-line">
+                {b.questions.map((q) => (
+                  <li key={q.qno} className="flex items-start gap-3 py-2 first:pt-0">
+                    <div className="min-w-0 flex-1">
+                      <Renderer
+                        block={b}
+                        question={q}
+                        values={values}
+                        onChange={onChange}
+                        {...(disabled ? { disabled } : {})}
+                      />
+                    </div>
+                    <ReviewFlag qnos={q.qnos ?? [q.qno]} flagged={flagged} onFlag={onFlag} />
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
-          {/* Với bảng/sơ đồ, checkbox Review đặt gọn ở cuối khối */}
-          {['gap-table', 'gap-flow', 'gap-diagram'].includes(b.kind) && (
-            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+          {GROUPED.includes(b.kind) && (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-2">
+              <span className="text-sm text-ink-2">Đánh dấu xem lại:</span>
               {b.questions.map((q) => (
-                <label key={q.qno} className="flex cursor-pointer items-center gap-1 hover:text-slate-800">
-                  <input
-                    type="checkbox"
-                    checked={flagged.has(q.qno)}
-                    onChange={() => onFlag(q.qno)}
-                    className="h-3 w-3"
-                  />
-                  Review {q.qno}
-                </label>
+                <ReviewFlag key={q.qno} qnos={[q.qno]} flagged={flagged} onFlag={onFlag} showNumber />
               ))}
             </div>
           )}
@@ -131,9 +127,77 @@ export default function QuestionPane({
   );
 }
 
+/**
+ * Checkbox "đánh dấu xem lại".
+ *
+ * Nhãn chữ "Review" từng lặp lại ở cả 86 câu và làm viền phải thành một cột chữ
+ * xám (audit D3). Giờ nhãn là `aria-label` — screen reader vẫn đọc đủ, mắt thì
+ * chỉ thấy một dấu cờ nhỏ.
+ */
+function ReviewFlag({
+  qnos,
+  flagged,
+  onFlag,
+  showNumber,
+}: {
+  qnos: number[];
+  flagged: Set<number>;
+  onFlag: (qno: number) => void;
+  showNumber?: boolean;
+}): JSX.Element {
+  const first = qnos[0]!;
+  const on = flagged.has(first);
+  const label = qnos.length > 1 ? `câu ${qnos[0]}–${qnos[qnos.length - 1]}` : `câu ${first}`;
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-label={`Đánh dấu xem lại ${label}`}
+      title={`Đánh dấu xem lại ${label}`}
+      onClick={() => qnos.forEach(onFlag)}
+      className={
+        'mt-0.5 flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-sm transition-colors ' +
+        (on ? 'bg-warn-soft text-warn' : 'text-ink-3 hover:bg-surface-3 hover:text-ink-2')
+      }
+    >
+      <span aria-hidden="true" className="text-base leading-none">
+        {on ? '★' : '☆'}
+      </span>
+      {showNumber && <span className="tabular-nums">{first}</span>}
+    </button>
+  );
+}
+
+/**
+ * Khối Chiến thuật — chỉ hiện ở chế độ Luyện.
+ *
+ * Đây là nội dung học tập có giá trị nhất trong file (CLAUDE.md §4.3), nên mở
+ * sẵn; người dùng thu lại được khi đã thuộc.
+ */
+function Strategy({ markdown }: { markdown: string }): JSX.Element {
+  return (
+    <details open className="study-box mt-3">
+      <summary className="cursor-pointer select-none px-3 py-2 text-base font-semibold text-study marker:text-study">
+        Chiến thuật
+      </summary>
+      <div
+        className="prose-md border-t border-study-line px-3 py-2 text-base text-ink"
+        dangerouslySetInnerHTML={{ __html: md(stripLabel(markdown)) }}
+      />
+    </details>
+  );
+}
+
 function FixedOptions({ labels }: { labels: string[] }): JSX.Element {
   return (
-    <p className="my-2 text-sm font-semibold tracking-wide text-slate-700">{labels.join('  /  ')}</p>
+    <p className="mt-3 flex flex-wrap gap-2">
+      {labels.map((l) => (
+        <span key={l} className="rounded border border-line bg-surface-3 px-2 py-0.5 text-sm font-semibold">
+          {l}
+        </span>
+      ))}
+    </p>
   );
 }
 
