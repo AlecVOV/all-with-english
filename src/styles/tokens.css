@@ -1,0 +1,124 @@
+/**
+ * Token hiển thị — nguồn sự thật duy nhất cho màu, cỡ chữ, spacing, radius,
+ * shadow của app. Component KHÔNG được viết giá trị thô (`#hex`, `text-[13px]`,
+ * `slate-400`); chỉ dùng lớp Tailwind ánh xạ từ các biến dưới đây
+ * (xem `tailwind.config.js` → theme.extend).
+ *
+ * Nguyên tắc chọn màu: app này để đọc 900–1000 từ liên tục rồi đọc tiếp phần
+ * giải thích, có phiên dài tới 2 tiếng. Nên:
+ *   - thang trung tính ngả ấm nhẹ (không phải xanh-xám), đỡ chói khi đọc lâu;
+ *   - chỉ MỘT màu nhấn cho hành động, MỘT màu cho nội dung học tập;
+ *   - mọi cặp chữ/nền đã đo ≥ 4.5:1, viền điều khiển ≥ 3:1 (WCAG 1.4.11).
+ * Số đo ghi ngay cạnh từng biến, đo trên nền sáng nhất và tối nhất của app.
+ */
+
+:root {
+  /* ---- Trung tính: chữ ------------------------------------------- */
+  --c-ink: #242220; /* 15.9:1 trên trắng — chữ chính, bài đọc */
+  --c-ink-2: #56524c; /*  7.8:1 — chữ phụ, mô tả */
+  --c-ink-3: #6f6a63; /*  5.4:1 — mờ nhất còn đạt AA. KHÔNG dùng gì nhạt hơn */
+
+  /* ---- Trung tính: nền và viền ------------------------------------ */
+  --c-surface: #ffffff; /* thẻ, pane */
+  --c-surface-2: #f7f5f1; /* nền app */
+  --c-surface-3: #efece6; /* vùng chìm: danh sách lựa chọn, header bảng */
+  --c-line: #ddd8d0; /* viền mảnh, đường phân cách (phi tương tác) */
+  --c-line-strong: #bdb6ab; /* viền nhấn */
+  --c-field: #8c857a; /* 3.4–3.7:1 — viền ô nhập/select, đạt 1.4.11 */
+
+  /* ---- Chrome tối (header khung thi) ------------------------------ */
+  --c-chrome: #2b2926;
+  --c-chrome-2: #3d3a35; /* nút trên header */
+  --c-chrome-line: #55504a;
+  --c-on-chrome: #f7f5f1; /* 13.6:1 trên --c-chrome */
+  --c-on-chrome-2: #c9c3ba; /*  8.1:1 — chữ phụ trên header */
+
+  /* ---- Nhấn: hành động -------------------------------------------- */
+  --c-accent: #1c5b8a; /* 7.2:1 trên trắng; trắng trên nó 7.2:1 */
+  --c-accent-dk: #164a72; /* trạng thái hover */
+  --c-accent-soft: #e8f1f8; /* nền chọn nhạt */
+  --c-accent-line: #9cc0d9;
+
+  /* ---- Nhấn: nội dung học tập (Chiến thuật, ghi chú dạy học) ------- */
+  --c-study: #14664a; /* 6.9:1 trên trắng */
+  --c-study-soft: #e7f2ee;
+  --c-study-line: #9ac6b6;
+
+  /* ---- Ngữ nghĩa chấm điểm ---------------------------------------- */
+  --c-ok: #1a6b46; /* 6.5:1 — đúng */
+  --c-ok-soft: #e6f2ec;
+  --c-ok-line: #a2ccb6;
+  --c-bad: #a3271f; /* 7.3:1 — sai */
+  --c-bad-soft: #fceceb;
+  --c-bad-line: #e2aaa5;
+  --c-warn: #8a5a09; /* 5.9:1 — quá số từ, cảnh báo parse */
+  --c-warn-soft: #fdf3e0;
+  --c-warn-line: #e0c690;
+
+  /* ---- Bôi vàng trên bài đọc -------------------------------------- */
+  --c-mark: #ffe680;
+  --c-mark-note: #ffd75e;
+
+  /* ---- Giấy: người dùng đổi được ở header khung thi --------------- */
+  --paper: #ffffff;
+  --paper-cream: #faf6ec;
+
+  /* ---- Cỡ chữ UI. Sàn 12px, không có 9/11px ----------------------- */
+  --fs-xs: 0.75rem; /* 12 — nhãn, badge */
+  --fs-sm: 0.8125rem; /* 13 — chữ phụ */
+  --fs-base: 0.875rem; /* 14 — chữ UI mặc định */
+  --fs-md: 1rem; /* 16 */
+  --fs-lg: 1.125rem; /* 18 — tiêu đề khối */
+  --fs-xl: 1.375rem; /* 22 — tiêu đề màn */
+  --fs-2xl: 1.75rem; /* 28 */
+  --fs-3xl: 2.25rem; /* 36 — số điểm */
+
+  /* ---- Cỡ chữ vùng đọc: 3 mức ở header khung thi ------------------ */
+  --fs-read: 1rem; /* ghi đè bởi [data-read-size] bên dưới */
+  --lh-read: 1.7; /* thoáng, cho đoạn dài */
+  --measure: 66ch; /* độ dài dòng tối đa của bài đọc */
+
+  /* ---- Bo góc: đúng hai giá trị ----------------------------------- */
+  --r-sm: 4px; /* điều khiển: nút, ô nhập, badge */
+  --r-md: 8px; /* vùng chứa: thẻ, panel, dialog */
+
+  /* ---- Đổ bóng: chỉ cho lớp nổi. Thẻ dùng viền, không dùng bóng --- */
+  --sh-pop: 0 4px 14px rgb(36 34 32 / 0.16);
+  --sh-dialog: 0 12px 32px rgb(36 34 32 / 0.24);
+
+  /* ---- Focus: một kiểu duy nhất cho toàn app ---------------------- */
+  --focus-w: 2px;
+  --focus-c: var(--c-accent);
+  --focus-offset: 2px;
+}
+
+/* Ba mức cỡ chữ vùng đọc (header khung thi). Đặt trên phần tử khung thi. */
+[data-read-size='0'] {
+  --fs-read: 0.9375rem;
+} /* 15 */
+[data-read-size='1'] {
+  --fs-read: 1.0625rem;
+} /* 17 */
+[data-read-size='2'] {
+  --fs-read: 1.1875rem;
+} /* 19 */
+
+/* Nền giấy vàng nhạt — áp cho cả khung, không chỉ hai pane. */
+[data-paper='cream'] {
+  --paper: var(--paper-cream);
+  --c-surface: var(--paper-cream);
+  --c-surface-2: #f4efe2;
+  --c-surface-3: #ece5d5;
+}
+
+/* Tôn trọng người tắt hiệu ứng chuyển động. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

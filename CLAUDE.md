@@ -539,3 +539,83 @@ Khi hai tài liệu mâu thuẫn, tài liệu đứng trên thắng:
 3. `docs/format-survey.md` — khảo sát gốc, đánh số `#1`–`#39`; chỉ để tra cứu bằng chứng, không phải luật
 
 `scripts/normalize.mjs` là **hiện thực** của §4 canonical-format, `scripts/validate.mjs` là **hiện thực** của §8. Sửa spec mà không sửa hai script đó thì spec chỉ là văn.
+
+## 13. UI rules
+
+Mục này chỉ nói về **tầng hiển thị**. Nó không được mâu thuẫn với §4–§7; chỗ nào
+đụng format, chấm điểm hay cách nạp đề thì §4–§7 và `docs/canonical-format.md` thắng.
+
+### 13.1 Token là nguồn sự thật của hình thức
+
+`src/styles/tokens.css` giữ toàn bộ màu, cỡ chữ, bo góc, đổ bóng, focus.
+`tailwind.config.js` chỉ **ánh xạ** các biến đó thành lớp Tailwind.
+
+- Component **không** được viết giá trị thô: không `#hex`, không `text-[13px]`,
+  không `slate-400` / `sky-700` / `emerald-50`. Chỉ dùng lớp ánh xạ từ token:
+  `text-ink`, `text-ink-2`, `bg-surface-3`, `border-line-field`, `bg-accent`…
+- Cần một sắc thái chưa có ⇒ **thêm token ở `tokens.css` trước**, đo tương phản,
+  rồi mới ánh xạ. Không thêm thẳng vào component.
+- Ngoại lệ duy nhất: `w-[6ch]` của ô nhập trong khối ASCII (§4.4) — đó là ràng buộc
+  hình học của khung vẽ, không phải quyết định thẩm mỹ.
+
+### 13.2 Bảng màu, dùng đúng chỗ
+
+| Token | Chỉ dùng cho |
+|---|---|
+| `ink` / `ink-2` / `ink-3` | chữ. `ink-3` là mức nhạt nhất được phép (5.4:1) |
+| `accent` | hành động chính, trạng thái đang chọn, link |
+| `study` | **nội dung học tập**: khối Chiến thuật, `blockNote`, chẩn đoán |
+| `ok` / `bad` | chỉ kết quả chấm điểm: đúng / sai |
+| `warn` | quá số từ, `parseWarnings`, dạng `unknown` |
+| `line` / `line-strong` | viền phi tương tác |
+| `line-field` | viền ô nhập, select, nút có viền |
+
+`study` và `ok` đều là xanh lá nhưng **không thay thế cho nhau**: `study` nghĩa là
+"đây là thứ cần học", `ok` nghĩa là "câu này bạn làm đúng". Trộn hai cái là làm hỏng
+điểm mấu chốt ở §6.3.5.
+
+### 13.3 Tương phản và bàn phím — mức sàn, không thương lượng
+
+- Mọi cặp chữ/nền ≥ **4.5:1**. Viền của điều khiển ≥ **3:1** (WCAG 1.4.11).
+  Thêm màu mới thì **đo**, đừng ước lượng bằng mắt.
+- Cỡ chữ nhỏ nhất là `text-xs` (12px). Không có 9px, 11px.
+- Focus dùng đúng một kiểu, khai báo một lần ở `index.css` bằng `:focus-visible`.
+  Component **không** tự vẽ vòng focus riêng, và không bao giờ đặt `outline: none`
+  mà không thay bằng thứ khác nhìn thấy được.
+- Mọi thứ bấm được bằng chuột phải tới được bằng Tab và kích hoạt được bằng
+  Enter/Space. Nhóm nút đóng vai trò lựa chọn phải có `aria-pressed` hoặc
+  `role="radiogroup"`; tab phải có `role="tablist"` + `aria-selected`.
+- Hộp thoại dùng `<dialog>` mở bằng `showModal()` — được bẫy focus và đóng bằng
+  Esc sẵn, không tự dựng lại bằng `div` + `fixed inset-0`.
+
+### 13.4 Markdown trong dữ liệu đề phải được render
+
+Canonical format **cố ý** giữ `**…**` trong `AnswerKey.display` (§4.5, #38 KEEP),
+trong text câu hỏi và trong `instruction`. Tầng hiển thị có trách nhiệm render
+những chuỗi đó, không được đổ thẳng ra JSX.
+
+- Đoạn văn nhiều dòng → `md()` (block).
+- Chuỗi một dòng nằm trong câu (prompt, instruction, option, `display`) → `mdInline()`
+  trong `src/lib/markdown.ts`.
+- Đây là việc của **hiển thị**. Không sửa parser để nó strip `**` — `accepted` cần
+  bản đã strip, `display` cần bản raw, hai thứ khác nhau.
+
+### 13.5 Đọc lâu
+
+- Bài đọc dùng **serif**, căn **trái** (không `text-justify` — cột hẹp + từ dài sinh
+  "sông" trắng), `--lh-read: 1.7`, giới hạn `--measure: 66ch`.
+- Ba mức cỡ chữ ở header đổi `--fs-read` qua `[data-read-size]`; nền trắng/vàng đổi
+  cả bảng màu qua `[data-paper]` — áp cho **toàn khung**, không chỉ hai pane.
+- Chuyển động: chỉ để phản hồi thao tác của người dùng. Không có hiệu ứng tự chạy.
+  `prefers-reduced-motion` đã được tôn trọng ở `tokens.css`.
+
+### 13.6 Hai chế độ, ranh giới không được nhoè
+
+Chế độ Thi **không** hiện: khối `strategy`, chẩn đoán, đáp án, bất cứ gợi ý tiếng
+Việt nào về cách làm. Điều kiện hiện chiến thuật chỉ có một chỗ duy nhất
+(`showStrategy` truyền từ `ExamShell`), đừng rải thêm điều kiện mới ở component con.
+
+### 13.7 Không hardcode nội dung, kể cả trong câu chữ UI
+
+§10 áp cho cả text trên giao diện. Không viết câu kiểu "bài này gồm toàn dạng
+Passage 3", "86 câu", "16 dạng" vào JSX — mọi con số suy từ đề lúc chạy.
