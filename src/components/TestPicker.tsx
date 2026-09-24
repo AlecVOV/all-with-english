@@ -147,6 +147,10 @@ function PickList({
       {broken.length > 0 && (
         <section className="mt-5 rounded-md border border-warn-line bg-warn-soft p-3 text-base">
           <h2 className="font-semibold text-warn">Có đề chưa parse sạch</h2>
+          <p className="mt-1 text-ink-2">
+            Đề vẫn làm được, nhưng có thể thiếu câu hoặc thiếu đáp án. Chạy{' '}
+            <code className="rounded bg-surface-3 px-1">npm run validate</code> để xem đầy đủ.
+          </p>
           <ul className="mt-2 space-y-2">
             {broken.map((t) => (
               <li key={t.id}>

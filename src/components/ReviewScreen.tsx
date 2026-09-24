@@ -333,7 +333,9 @@ function WrongList({
 
   if (wrong.length === 0) {
     return (
-      <p className="rounded-md border border-ok-line bg-ok-soft p-4 text-base">Không sai câu nào.</p>
+      <p className="rounded-md border border-ok-line bg-ok-soft p-4 text-base">
+        Không sai câu nào. Cả bài đúng hết — không có gì để xem lại ở tab này.
+      </p>
     );
   }
 
@@ -492,7 +494,7 @@ function PromptOf({ test, qno }: { test: LoadedTest; qno: number }): JSX.Element
         </p>
       );
     }
-    return <p className="text-base text-ink-2">(câu nằm trong bảng hoặc sơ đồ)</p>;
+    return <p className="text-base text-ink-2">Câu này nằm trong bảng hoặc sơ đồ của dạng.</p>;
   }
   return null;
 }

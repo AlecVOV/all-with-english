@@ -13,6 +13,8 @@ import type { Highlight } from '../lib/storage';
 
 interface Props {
   title: string;
+  /** mã ngôn ngữ bài đọc, từ frontmatter.passage_language */
+  lang: string;
   paragraphs: { label: string; text: string }[];
   highlights: Highlight[];
   onHighlights: (h: Highlight[]) => void;
@@ -54,7 +56,7 @@ function renderMarked(text: string, marks: Highlight[]): (string | JSX.Element)[
 
 type Menu = { x: number; y: number; text: string; para: string };
 
-export default function PassagePane({ title, paragraphs, highlights, onHighlights }: Props): JSX.Element {
+export default function PassagePane({ title, lang, paragraphs, highlights, onHighlights }: Props): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [noting, setNoting] = useState(false);
@@ -109,7 +111,9 @@ export default function PassagePane({ title, paragraphs, highlights, onHighlight
 
   return (
     <div ref={ref} className="relative h-full overflow-y-auto bg-paper px-6 py-5">
-      <div className="mx-auto max-w-measure">
+      {/* Trang khai báo lang="vi" còn bài đọc là tiếng khác → phải đánh dấu,
+          nếu không screen reader đọc tiếng Anh bằng giọng tiếng Việt (WCAG 3.1.2). */}
+      <div lang={lang} className="mx-auto max-w-measure">
         <h2 className="mb-4 font-serif text-xl font-bold">{title}</h2>
 
         {paragraphs.map((p) => (
@@ -152,14 +156,28 @@ export default function PassagePane({ title, paragraphs, highlights, onHighlight
             </form>
           ) : (
             <div className="flex items-center gap-0.5">
-              <button className="rounded px-2 py-1 text-base hover:bg-surface-3" onClick={() => add()}>
+              {/* Nhãn giữ nguyên tiếng Anh theo CLAUDE.md §6.2 (đề thi máy dùng
+                  đúng ba chữ này); title tiếng Việt để không phải đoán nghĩa. */}
+              <button
+                title="Bôi vàng đoạn đã chọn"
+                className="rounded px-2 py-1 text-base hover:bg-surface-3"
+                onClick={() => add()}
+              >
                 Highlight
               </button>
-              <button className="rounded px-2 py-1 text-base hover:bg-surface-3" onClick={() => setNoting(true)}>
+              <button
+                title="Bôi vàng kèm ghi chú"
+                className="rounded px-2 py-1 text-base hover:bg-surface-3"
+                onClick={() => setNoting(true)}
+              >
                 Note
               </button>
               <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-line" />
-              <button className="rounded px-2 py-1 text-base text-ink-2 hover:bg-surface-3" onClick={clear}>
+              <button
+                title="Bỏ bôi vàng ở đoạn đã chọn"
+                className="rounded px-2 py-1 text-base text-ink-2 hover:bg-surface-3"
+                onClick={clear}
+              >
                 Clear
               </button>
             </div>

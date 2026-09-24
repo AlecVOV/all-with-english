@@ -262,6 +262,7 @@ export default function ExamShell({
         <div style={{ width: `${split}%` }} className="min-w-0">
           <PassagePane
             title={test.passageTitle}
+            lang={test.frontmatter?.passage_language ?? 'en'}
             paragraphs={test.paragraphs}
             highlights={session.highlights}
             onHighlights={(h: Highlight[]) => setSession({ ...session, highlights: h })}

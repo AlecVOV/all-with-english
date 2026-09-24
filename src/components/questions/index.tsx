@@ -308,7 +308,12 @@ export function GapTableQuestion({
   disabled?: boolean;
 }): JSX.Element {
   const t = block.table;
-  if (!t) return <p className="text-bad">Không dựng được bảng.</p>;
+  if (!t)
+    return (
+      <p className="rounded-md border border-warn-line bg-warn-soft p-2 text-base text-warn">
+        Không dựng được bảng cho dạng này. Chạy <code>npm run validate</code> để xem file đề lệch ở đâu.
+      </p>
+    );
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-base">
@@ -354,10 +359,19 @@ export function AsciiQuestion({
   onChange: (qno: number, v: string) => void;
   disabled?: boolean;
 }): JSX.Element {
-  if (!block.raw) return <p className="text-bad">Không tìm thấy khối sơ đồ.</p>;
+  if (!block.raw)
+    return (
+      <p className="rounded-md border border-warn-line bg-warn-soft p-2 text-base text-warn">
+        Không tìm thấy khối sơ đồ của dạng này. Chạy <code>npm run validate</code> để xem file đề lệch ở đâu.
+      </p>
+    );
   const lines = block.raw.split('\n');
   return (
-    <div className="overflow-x-auto rounded-md border border-line bg-surface-3/50 p-3">
+    <div
+      role="group"
+      aria-label={`Sơ đồ điền từ, câu ${block.range[0]} đến ${block.range[1]}`}
+      className="overflow-x-auto rounded-md border border-line bg-surface-3/50 p-3"
+    >
       <pre className="whitespace-pre font-mono text-sm leading-6 text-ink">
         {lines.map((line, i) => {
           const segs = splitAscii(line, block.range);
