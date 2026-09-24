@@ -643,7 +643,7 @@ The writer describes the Kadam biographies as works of **50** ______ rather than
 
 | Q | Đ.án | Giải thích |
 |---|---|---|
-| 66 | **Nagtso Tsultrim Gyalwa** (chấp nhận *Nagtso*) | bài gọi ông là "the translator Nagtso Tsultrim Gyalwa". |
+| 66 | **Nagtso** (chấp nhận *Nagtso Tsultrim Gyalwa*) | bài gọi đầy đủ là "the translator Nagtso Tsultrim Gyalwa", nhưng khối này chỉ cho hai từ — viết **Nagtso**, đúng dạng rút gọn bài dùng ngay câu sau ("Nagtso waited…"). Tên đầy đủ đúng nội dung nhưng quá số từ nên vẫn 0 điểm. |
 | 67 | **Ratnākara** | |
 | 68 | **three years** | |
 | 69 | **Nepal** | |
