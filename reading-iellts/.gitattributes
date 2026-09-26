@@ -1,0 +1,7 @@
+# Corpus và mã nguồn LUÔN dùng LF.
+# Khung ASCII trong gap-flow/gap-diagram và các hash byte-exact của
+# scripts/verify-migration.mjs sẽ vỡ nếu Windows đổi sang CRLF.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary

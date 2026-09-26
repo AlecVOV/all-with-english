@@ -1,0 +1,162 @@
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface-2 text-ink antialiased;
+    font-size: var(--fs-base);
+  }
+
+  /* Một kiểu focus duy nhất cho toàn app (audit F2). Dùng :focus-visible nên
+     bấm chuột không hiện vòng, đi bằng Tab thì hiện. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: var(--focus-w) solid var(--focus-c);
+    outline-offset: var(--focus-offset);
+    border-radius: var(--r-sm);
+  }
+
+  /* Trên nền tối của header, vòng focus xanh chìm — đổi sang màu chữ header. */
+  .on-chrome :where(a, button, input, select, summary, [tabindex]):focus-visible {
+    outline-color: var(--c-on-chrome);
+  }
+
+  /* Tiêu đề ngắn ngắt dòng cân đối; đoạn dài tránh chữ mồ côi cuối đoạn. */
+  :where(h1, h2, h3) {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* ---- Nút ------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded border px-3 py-1.5 text-base font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-white hover:bg-accent-dk;
+  }
+  .btn-quiet {
+    @apply border-line-strong bg-surface text-ink hover:bg-surface-3;
+  }
+  .btn-go {
+    @apply border-ok bg-ok text-white hover:brightness-110;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  /* ---- Ô nhập ----------------------------------------------------- */
+  .field {
+    @apply rounded border border-line-field bg-surface px-2 py-1 text-ink;
+    @apply focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-ring;
+    @apply disabled:bg-surface-3 disabled:text-ink-3;
+  }
+
+  /* ---- Thẻ / panel ------------------------------------------------ */
+  .card {
+    @apply rounded-md border border-line bg-surface;
+  }
+
+  /* ---- Badge số câu ----------------------------------------------- */
+  .qbadge {
+    @apply inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded px-1 text-xs font-bold tabular-nums;
+    @apply bg-ink text-white;
+  }
+
+  /* ---- Hàng <summary> mở/đóng được --------------------------------
+     `display:flex` trên <summary> làm mất ::marker mặc định, nên mọi hàng
+     mở/đóng dùng chung một chevron tự vẽ thay vì trông chờ vào marker. */
+  .summary-row {
+    @apply flex cursor-pointer select-none items-center gap-2;
+    list-style: none;
+  }
+  .summary-row::-webkit-details-marker {
+    display: none;
+  }
+  .chev {
+    @apply inline-block shrink-0 text-xs leading-none transition-transform;
+  }
+  details[open] > .summary-row .chev {
+    transform: rotate(90deg);
+  }
+
+  /* ---- Khối nội dung học tập (Chiến thuật, ghi chú dạy học) ------- */
+  .study-box {
+    @apply rounded-md border border-study-line bg-study-soft;
+  }
+
+  /* ---- Văn bản do `marked` sinh ra: bảng, danh sách, in đậm… ------ */
+  .prose-md :where(p) {
+    @apply my-2 leading-relaxed;
+    text-wrap: pretty;
+  }
+  .prose-md :where(p:first-child) {
+    @apply mt-0;
+  }
+  .prose-md :where(p:last-child) {
+    @apply mb-0;
+  }
+  .prose-md :where(ul) {
+    @apply my-2 list-disc space-y-1 pl-5;
+  }
+  .prose-md :where(ol) {
+    @apply my-2 list-decimal space-y-1 pl-5;
+  }
+  .prose-md :where(li > ul) {
+    @apply my-1;
+  }
+  .prose-md :where(strong) {
+    @apply font-semibold;
+  }
+  .prose-md :where(em) {
+    @apply italic;
+  }
+  .prose-md :where(code) {
+    @apply rounded bg-surface-3 px-1 py-0.5 text-[0.9em];
+  }
+  .prose-md :where(table) {
+    @apply my-3 w-full border-collapse text-sm;
+  }
+  .prose-md :where(th) {
+    @apply border border-line bg-surface-3 px-2 py-1 text-left font-semibold;
+  }
+  .prose-md :where(td) {
+    @apply border border-line px-2 py-1 align-top;
+  }
+  .prose-md :where(blockquote) {
+    @apply my-2 border-l-4 border-line pl-3 text-ink-2;
+  }
+  .prose-md :where(h1, h2, h3, h4) {
+    @apply mb-1 mt-3 font-semibold;
+  }
+  .prose-md :where(h1:first-child, h2:first-child, h3:first-child, h4:first-child) {
+    @apply mt-0;
+  }
+  .prose-md :where(a) {
+    @apply text-accent underline;
+  }
+}
+
+/* Bôi vàng trên bài đọc */
+mark.hl {
+  background-color: var(--c-mark);
+  border-radius: var(--r-sm);
+  padding-inline: 0.125rem;
+  color: inherit;
+}
+mark.hl[data-note] {
+  background-color: var(--c-mark-note);
+  border-bottom: 2px solid var(--c-warn);
+  cursor: help;
+}
+
+/* Lớp phủ của <dialog> mở bằng showModal() */
+dialog::backdrop {
+  background-color: rgb(36 34 32 / 0.45);
+}
