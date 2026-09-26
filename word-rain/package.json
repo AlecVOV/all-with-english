@@ -1,0 +1,26 @@
+{
+  "name": "word-rain",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "sandbox": "ampx sandbox",
+    "amplify:deploy": "ampx pipeline-deploy --branch main --app-id $AMPLIFY_APP_ID"
+  },
+  "dependencies": {
+    "aws-amplify": "^6.22.0",
+    "nuxt": "^4.5.2",
+    "vue": "^3.5.43",
+    "vue-router": "^5.3.1"
+  },
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.25.1",
+    "@aws-amplify/backend-cli": "^1.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
