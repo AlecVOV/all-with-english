@@ -2,7 +2,7 @@
 
 Game học từ vựng kiểu "từ rơi" — Nuxt 3 (SPA) + AWS Amplify Gen 2 (Amplify Data/AppSync + DynamoDB), guest-only, tối ưu chi phí. Chi tiết kiến trúc/tính năng xem [CLAUDE.md](./CLAUDE.md).
 
-**Đang chạy live tại:** https://main.d32yqkh16ilzqk.amplifyapp.com (region `ap-southeast-1`). Toàn bộ lệnh đã dùng để deploy: xem [DEPLOY.md](./DEPLOY.md). Sơ đồ kiến trúc AWS, cấu trúc code và luồng game: xem [docs/](./docs/README.md).
+**Đang chạy live tại:** https://main.d2eu1mn2ux8xtn.amplifyapp.com (region `ap-southeast-1`). Toàn bộ lệnh đã dùng để deploy: xem [DEPLOY.md](./DEPLOY.md). Sơ đồ kiến trúc AWS, cấu trúc code và luồng game: xem [docs/](./docs/README.md).
 
 > ⚠️ Lưu ý bảo mật: backend dùng `allow.guest()` (theo đúng CLAUDE.md) — mọi khách truy cập chia sẻ chung 1 vùng dữ liệu, **không có cô lập riêng theo từng học sinh/thiết bị** (Amplify Data không hỗ trợ owner-auth qua identity pool cho guest). Nếu cần riêng tư thật sự, phải chuyển sang đăng nhập Cognito User Pool thật. Chi tiết trong DEPLOY.md mục 3.
 

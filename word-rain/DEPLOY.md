@@ -2,10 +2,19 @@
 
 Ghi lại toàn bộ lệnh đã chạy để deploy backend (Amplify Gen 2: Cognito guest + AppSync + DynamoDB) và frontend (Amplify Hosting, static) lên region **Singapore (ap-southeast-1)**, account AWS `677276113002`.
 
-- **App ID:** `d32yqkh16ilzqk`
-- **URL:** https://main.d32yqkh16ilzqk.amplifyapp.com
+- **App ID:** `d2eu1mn2ux8xtn` (tên `word-rain-v2`)
+- **URL:** https://main.d2eu1mn2ux8xtn.amplifyapp.com
 - **Region:** ap-southeast-1
-- **Cách deploy:** thủ công qua AWS CLI (không dùng git-connected CI/CD vì repo chưa có remote GitHub) — xem mục "Deploy lại / CI-CD" bên dưới để nối GitHub sau này.
+- **Cách deploy:** tự động — app nối repo GitHub `AlecVOV/all-with-english` (monorepo, root `word-rain`), mỗi lần push `main` Amplify chạy `amplify.yml` ở gốc repo (backend `ampx pipeline-deploy` + frontend `npm run generate`). Không cần chạy tay lệnh nào.
+- **App cũ:** `d32yqkh16ilzqk` (deploy thủ công, không nối được repo vì Amplify đòi xoá nhánh `main` — tức là xoá luôn backend). Dữ liệu đã chép nguyên sang app mới ngày 2026-09-27 (3 bài, 153 từ, giữ nguyên ID). Các mục 1–7 bên dưới là lịch sử deploy tay của app cũ.
+
+## Chuyển sang app mới (2026-09-27)
+
+1. Tạo app `d2eu1mn2ux8xtn` qua Amplify Console (GitHub → `all-with-english`, monorepo root `word-rain`). Console tự đặt env var `AMPLIFY_MONOREPO_APP_ROOT=word-rain`.
+2. Console **không** gắn service role → build đầu lỗi `ssm:GetParameter ... cdk-bootstrap`. Sửa: `aws amplify update-app --region ap-southeast-1 --app-id d2eu1mn2ux8xtn --iam-service-role-arn arn:aws:iam::677276113002:role/AmplifyWordRainServiceRole` (role có policy `AmplifyBackendDeployFullAccess`).
+3. Nitro tự nhận môi trường Amplify và chuyển sang preset `aws-amplify` (xuất ra `.amplify-hosting/`) → lỗi `Artifact directory doesn't exist: .output/public`. Sửa trong `amplify.yml`: `NITRO_PRESET=static npm run generate`.
+4. Chép dữ liệu: Scan 2 bảng cũ (`WordSet/Word-wy52jfqxtzhmbevan253h63d2i-NONE`) → BatchWrite nguyên item sang bảng mới (`…-igy63z6akfdvnp565snosapwue-NONE`).
+5. Gắn rewrite SPA: `aws amplify update-app --region ap-southeast-1 --app-id d2eu1mn2ux8xtn --custom-rules file://custom-rules.json`.
 
 ## Lịch sử deploy
 
@@ -114,6 +123,8 @@ curl -s -o /dev/null -w "%{http_code}\n" https://main.d32yqkh16ilzqk.amplifyapp.
 
 ## Deploy lại sau khi sửa code
 
+Hiện tại: chỉ cần push `main`. Các lệnh dưới đây là cách cũ cho app `d32yqkh16ilzqk`, chỉ giữ để tham khảo.
+
 ```bash
 # Backend đổi (amplify/**): chạy lại bước 3
 export AWS_REGION=ap-southeast-1 CI=true
@@ -127,14 +138,9 @@ curl -X PUT -T deploy.zip "<zipUploadUrl>"
 aws amplify start-deployment --app-id d32yqkh16ilzqk --branch-name main --job-id <jobId> --region ap-southeast-1
 ```
 
-## Nối GitHub để có CI/CD tự động (khuyến nghị cho lâu dài)
-
-Cách deploy thủ công ở trên dùng tốt để có bản chạy ngay, nhưng mỗi lần sửa code phải tự chạy lại các lệnh trên. Muốn tự động build+deploy mỗi khi push code (đúng kiến trúc mô tả trong CLAUDE.md mục 4/8), cần:
-
-1. Tạo repo Git (GitHub/CodeCommit/GitLab), push code lên.
-2. Trong AWS Console → Amplify Hosting → app `word-rain` → "Connect branch" → chọn repo + branch `main`. Amplify sẽ tự đọc `amplify.yml`/mặc định để chạy `npm ci && npx ampx pipeline-deploy ... && npm run generate` trong CI mỗi lần push, không cần chạy tay các lệnh ở mục 3/5/6 nữa.
-
 ## Dọn dẹp tài nguyên (nếu muốn xoá hết, ví dụ ngừng dùng)
+
+Dùng để xoá **app cũ** `d32yqkh16ilzqk` khi không cần nữa. Stack của app cũ là `amplify-d32yqkh16ilzqk-main-branch-ee15bf4951`; đừng nhầm với stack của app mới (`amplify-d2eu1mn2ux8xtn-main-branch-…`).
 
 ```bash
 aws amplify delete-app --app-id d32yqkh16ilzqk --region ap-southeast-1
