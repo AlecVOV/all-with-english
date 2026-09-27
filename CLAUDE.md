@@ -30,8 +30,7 @@ Lịch sử chuyển app và các lỗi build đã gặp: xem `word-rain/DEPLOY.
 
 ## 3. Việc còn lại
 
-- **Link cho học sinh:** đổi sang URL mới, hoặc cài redirect trên app cũ (custom rule `/<*>` → `https://main.d2eu1mn2ux8xtn.amplifyapp.com/<*>`, status `301`) — redirect chỉ còn khi app cũ còn.
-- **Xoá app cũ** (người dùng tự làm, sau khi học sinh đã chuyển): `aws amplify delete-app` + xoá stack cũ, xem cuối `word-rain/DEPLOY.md`.
+- **Xoá app cũ** (người dùng tự làm; đã chọn gửi link mới cho học sinh, không redirect): `aws amplify delete-app` + xoá stack cũ, xem cuối `word-rain/DEPLOY.md`. Sau khi xoá, gỡ các dòng về app cũ khỏi file này.
 - `wordCount` của Unit 1 (60, thực tế 64) và Unit 2 (15, thực tế 40) sẽ tự đúng khi người dùng lưu lại bài đó qua web — không cần sửa tay.
 - **Deploy reading-iellts** (khi người dùng yêu cầu): Amplify Console → Create new app → GitHub → `all-with-english`, nhánh `main` → tick **"My app is a monorepo"**, root `reading-iellts`. Nếu có route phía client thì thêm rewrite SPA giống word-rain.
 
