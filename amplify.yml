@@ -25,7 +25,9 @@ applications:
             - nvm use 22
         build:
           commands:
-            - npm run generate
+            # Nitro auto-detects Amplify and switches to its SSR preset
+            # (output .amplify-hosting/); force a plain static build instead.
+            - NITRO_PRESET=static npm run generate
       artifacts:
         baseDirectory: .output/public
         files:
